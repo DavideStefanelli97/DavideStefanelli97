@@ -1,52 +1,29 @@
 from __future__ import annotations
 
-from math import cos, pi, sin
+from math import pi, sin
 from pathlib import Path
 from random import Random
 
-from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageSequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS_DIR = ROOT / "assets"
+BRAIN_DIR = ASSETS_DIR / "brain-candidates"
 
-WIDTH = 1200
-HERO_HEIGHT = 340
+DIVIDER_WIDTH = 1200
 DIVIDER_HEIGHT = 72
-HERO_FRAMES = 18
 DIVIDER_FRAMES = 16
 
 COLORS = {
-    "bg_top": (8, 16, 28),
-    "bg_bottom": (12, 32, 48),
-    "panel": (14, 29, 43),
-    "panel_alt": (16, 38, 56),
+    "bg_top": (7, 15, 26),
+    "bg_bottom": (11, 27, 41),
+    "panel_top": (9, 18, 30),
+    "panel_bottom": (13, 31, 47),
     "line": (24, 63, 86),
     "cyan": (110, 231, 249),
     "teal": (88, 199, 177),
-    "teal_soft": (148, 230, 216),
-    "text": (213, 231, 244),
-    "muted": (122, 160, 184),
 }
-
-
-def load_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-    candidates = [
-        "C:/Windows/Fonts/consolab.ttf" if bold else "C:/Windows/Fonts/consola.ttf",
-        "C:/Windows/Fonts/segoeuib.ttf" if bold else "C:/Windows/Fonts/segoeui.ttf",
-        "C:/Windows/Fonts/arialbd.ttf" if bold else "C:/Windows/Fonts/arial.ttf",
-    ]
-    for candidate in candidates:
-        path = Path(candidate)
-        if path.exists():
-            return ImageFont.truetype(str(path), size=size)
-    return ImageFont.load_default()
-
-
-FONT_TITLE = load_font(38, bold=True)
-FONT_PANEL = load_font(18, bold=True)
-FONT_SMALL = load_font(15)
-FONT_TINY = load_font(13)
 
 
 def rgba(color: tuple[int, int, int], alpha: int) -> tuple[int, int, int, int]:
@@ -70,9 +47,9 @@ def draw_glow_line(
     color: tuple[int, int, int],
     *,
     width: int = 2,
-    glow_radius: int = 7,
-    glow_alpha: int = 110,
-    core_alpha: int = 220,
+    glow_radius: int = 6,
+    glow_alpha: int = 90,
+    core_alpha: int = 210,
 ) -> None:
     glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
     glow_draw = ImageDraw.Draw(glow)
@@ -88,10 +65,10 @@ def draw_glow_rect(
     color: tuple[int, int, int],
     *,
     width: int = 2,
-    radius: int = 18,
-    glow_radius: int = 8,
-    glow_alpha: int = 90,
-    core_alpha: int = 170,
+    radius: int = 16,
+    glow_radius: int = 7,
+    glow_alpha: int = 70,
+    core_alpha: int = 150,
     fill: tuple[int, int, int, int] | None = None,
 ) -> None:
     glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
@@ -102,37 +79,19 @@ def draw_glow_rect(
     ImageDraw.Draw(base).rounded_rectangle(bbox, radius=radius, outline=rgba(color, core_alpha), width=width, fill=fill)
 
 
-def draw_glow_circle(
-    base: Image.Image,
-    bbox: tuple[int, int, int, int],
-    color: tuple[int, int, int],
-    *,
-    width: int = 2,
-    glow_radius: int = 10,
-    glow_alpha: int = 90,
-    core_alpha: int = 180,
-) -> None:
-    glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    glow_draw = ImageDraw.Draw(glow)
-    glow_draw.ellipse(bbox, outline=rgba(color, glow_alpha), width=width + 3)
-    glow = glow.filter(ImageFilter.GaussianBlur(glow_radius))
-    base.alpha_composite(glow)
-    ImageDraw.Draw(base).ellipse(bbox, outline=rgba(color, core_alpha), width=width)
-
-
 def add_grid(base: Image.Image, spacing: int, x_shift: float = 0.0) -> None:
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     width, height = base.size
     x_offset = int(x_shift % spacing)
     for x in range(-spacing + x_offset, width + spacing, spacing):
-        draw.line([(x, 0), (x, height)], fill=rgba(COLORS["line"], 42), width=1)
+        draw.line([(x, 0), (x, height)], fill=rgba(COLORS["line"], 32), width=1)
     for y in range(0, height + spacing, spacing):
-        draw.line([(0, y), (width, y)], fill=rgba(COLORS["line"], 30), width=1)
+        draw.line([(0, y), (width, y)], fill=rgba(COLORS["line"], 22), width=1)
     base.alpha_composite(overlay)
 
 
-def add_scanlines(base: Image.Image, step: int = 4, opacity: int = 13) -> None:
+def add_scanlines(base: Image.Image, *, opacity: int = 10, step: int = 4) -> None:
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     width, height = base.size
@@ -141,7 +100,7 @@ def add_scanlines(base: Image.Image, step: int = 4, opacity: int = 13) -> None:
     base.alpha_composite(overlay)
 
 
-def add_noise(base: Image.Image, seed: int, count: int, opacity: int = 36) -> None:
+def add_noise(base: Image.Image, *, seed: int, count: int, opacity: int = 22) -> None:
     rng = Random(seed)
     overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
     pixels = overlay.load()
@@ -155,159 +114,123 @@ def add_noise(base: Image.Image, seed: int, count: int, opacity: int = 36) -> No
     base.alpha_composite(overlay)
 
 
-def waveform_points(start_x: int, width: int, baseline: int, amplitude: float, phase: float, *, step: int = 10) -> list[tuple[float, float]]:
-    points: list[tuple[float, float]] = []
-    for x in range(start_x, start_x + width + step, step):
-        offset = x - start_x
-        signal = sin((offset / 58.0) + phase) + 0.38 * sin((offset / 17.0) - phase * 1.6)
-        y = baseline + signal * amplitude
-        points.append((x, y))
-    return points
+def sample_frames(path: Path, *, step: int = 1, max_frames: int | None = None) -> list[Image.Image]:
+    frames: list[Image.Image] = []
+    with Image.open(path) as image:
+        for index, frame in enumerate(ImageSequence.Iterator(image)):
+            if index % step != 0:
+                continue
+            frames.append(frame.convert("RGBA"))
+            if max_frames is not None and len(frames) >= max_frames:
+                break
+    if not frames:
+        raise ValueError(f"No frames decoded from {path}")
+    return frames
 
 
-def draw_trace_panel(base: Image.Image, x: int, y: int, width: int, height: int, label: str, points: list[tuple[float, float]]) -> None:
-    fill = rgba(COLORS["panel"], 104)
-    draw_glow_rect(base, (x, y, x + width, y + height), COLORS["cyan"], width=1, radius=16, glow_alpha=64, core_alpha=120, fill=fill)
-    ImageDraw.Draw(base).text((x + 16, y + 12), label, font=FONT_TINY, fill=rgba(COLORS["text"], 170))
-    draw_glow_line(base, points, COLORS["cyan"], width=2, glow_radius=5, glow_alpha=80, core_alpha=210)
+def rotate_frames(frames: list[Image.Image], start_index: int) -> list[Image.Image]:
+    if not frames:
+        return frames
+    offset = start_index % len(frames)
+    return frames[offset:] + frames[:offset]
 
 
-def draw_imaging_tiles(base: Image.Image, frame_index: int) -> None:
-    draw = ImageDraw.Draw(base)
-    phase = frame_index / HERO_FRAMES
-    tile_boxes = [
-        (794, 90, 930, 176),
-        (948, 90, 1084, 176),
-        (794, 194, 930, 280),
-        (948, 194, 1084, 280),
-    ]
-    for idx, box in enumerate(tile_boxes):
-        x1, y1, x2, y2 = box
-        fill = rgba(COLORS["panel_alt"], 136)
-        draw_glow_rect(base, box, COLORS["teal"], width=1, radius=14, glow_alpha=55, core_alpha=110, fill=fill)
-        inner = Image.new("RGBA", base.size, (0, 0, 0, 0))
-        inner_draw = ImageDraw.Draw(inner)
-        cx = (x1 + x2) / 2
-        cy = (y1 + y2) / 2
-        rx = 34 + idx * 2
-        ry = 20 + idx
-        offset = sin((phase * 2 * pi) + idx * 0.8) * 6
-        inner_draw.ellipse((cx - rx, cy - ry + offset, cx + rx, cy + ry + offset), outline=rgba(COLORS["cyan"], 145), width=2)
-        inner_draw.ellipse((cx - rx / 2, cy - ry / 2 + offset, cx + rx / 2, cy + ry / 2 + offset), outline=rgba(COLORS["teal"], 170), width=2)
-        inner = inner.filter(ImageFilter.GaussianBlur(1.4))
-        base.alpha_composite(inner)
-        draw.line((x1 + 12, y2 - 16, x2 - 12, y2 - 16), fill=rgba(COLORS["line"], 120), width=2)
+def render_panel_frame(
+    source_frame: Image.Image,
+    *,
+    frame_index: int,
+    total_frames: int,
+    canvas_size: tuple[int, int],
+    content_size: tuple[int, int],
+    border_color: tuple[int, int, int],
+) -> Image.Image:
+    width, height = canvas_size
+    phase = frame_index / max(total_frames, 1)
 
-
-def draw_circuit_mesh(base: Image.Image, frame_index: int) -> None:
-    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    phase = frame_index / HERO_FRAMES
-    segments = [
-        [(706, 72), (760, 72), (760, 128), (808, 128)],
-        [(706, 268), (760, 268), (760, 222), (808, 222)],
-        [(1098, 132), (1148, 132), (1148, 208), (1098, 208)],
-        [(436, 110), (512, 110), (512, 78), (618, 78)],
-        [(436, 232), (512, 232), (512, 266), (618, 266)],
-    ]
-    for segment in segments:
-        draw_glow_line(overlay, segment, COLORS["teal"], width=2, glow_radius=5, glow_alpha=70, core_alpha=145)
-    for idx, (cx, cy) in enumerate(((760, 72), (760, 268), (1148, 132), (1148, 208), (512, 110), (512, 232))):
-        pulse = 4 + 2 * sin((phase * 2 * pi * 2.0) + idx)
-        draw.ellipse((cx - pulse, cy - pulse, cx + pulse, cy + pulse), fill=rgba(COLORS["cyan"] if idx % 2 == 0 else COLORS["teal"], 210))
-    draw = None
-    base.alpha_composite(overlay.filter(ImageFilter.GaussianBlur(0.8)))
-    base.alpha_composite(overlay)
-
-
-def render_hero_frame(frame_index: int) -> Image.Image:
-    phase = frame_index / HERO_FRAMES
-    image = vertical_gradient(WIDTH, HERO_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
-    add_grid(image, 40, x_shift=phase * 16)
-
-    scan = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    scan_draw = ImageDraw.Draw(scan)
-    scan_x = int(126 + (WIDTH - 252) * phase)
-    scan_draw.rectangle((scan_x - 22, 0, scan_x + 22, HERO_HEIGHT), fill=rgba(COLORS["cyan"], 10))
-    scan_draw.rectangle((scan_x - 6, 0, scan_x + 6, HERO_HEIGHT), fill=rgba(COLORS["teal"], 20))
-    image.alpha_composite(scan)
-
-    draw_glow_rect(image, (52, 46, 646, 296), COLORS["cyan"], width=2, radius=22, glow_alpha=70, core_alpha=125, fill=rgba(COLORS["panel"], 112))
-    draw_glow_rect(image, (680, 46, 1148, 296), COLORS["teal"], width=2, radius=22, glow_alpha=60, core_alpha=115, fill=rgba(COLORS["panel"], 92))
-
-    ImageDraw.Draw(image).text((82, 70), "DAVIDE STEFANELLI", font=FONT_TITLE, fill=rgba(COLORS["text"], 238))
-    ImageDraw.Draw(image).text(
-        (84, 116),
-        "AI FOR MEDICAL IMAGING  //  EEG ANALYSIS  //  REPRESENTATION LEARNING",
-        font=FONT_SMALL,
-        fill=rgba(COLORS["cyan"], 205),
-    )
-    ImageDraw.Draw(image).text(
-        (84, 148),
-        "Neuroscience and computer vision workflows built for clarity and reproducibility.",
-        font=FONT_SMALL,
-        fill=rgba(COLORS["text"], 195),
+    panel = vertical_gradient(width, height, COLORS["panel_top"], COLORS["panel_bottom"])
+    add_grid(panel, 28, x_shift=phase * 8)
+    draw_glow_rect(
+        panel,
+        (10, 10, width - 10, height - 10),
+        border_color,
+        width=2,
+        radius=18,
+        glow_alpha=44,
+        core_alpha=114,
+        fill=rgba(COLORS["bg_top"], 38),
     )
 
-    panels = [
-        ("Medical Imaging", waveform_points(84, 520, 214, 12, phase * 2 * pi * 1.3)),
-        ("EEG / ERP / CWT", waveform_points(84, 520, 252, 9, phase * 2 * pi * 1.9 + 0.7)),
-        ("Representation Learning", waveform_points(84, 520, 290, 7, phase * 2 * pi * 2.4 + 1.4)),
-    ]
-    for idx, (label, points) in enumerate(panels):
-        draw_trace_panel(image, 78, 184 + idx * 34, 540, 44, label, points)
+    thumb = ImageOps.contain(source_frame, content_size)
+    layer = Image.new("RGBA", panel.size, (0, 0, 0, 0))
+    x = (width - thumb.width) // 2
+    y = (height - thumb.height) // 2
+    layer.paste(thumb, (x, y), thumb)
+    panel.alpha_composite(layer)
 
-    ImageDraw.Draw(image).text((708, 64), "RESEARCH DOMAINS", font=FONT_PANEL, fill=rgba(COLORS["teal_soft"], 218))
-    ImageDraw.Draw(image).text((708, 95), "medical imaging  /  eeg pipelines  /  experiment tracking", font=FONT_SMALL, fill=rgba(COLORS["text"], 182))
-    draw_imaging_tiles(image, frame_index)
+    draw_glow_rect(
+        panel,
+        (24, 24, width - 24, height - 24),
+        COLORS["line"],
+        width=1,
+        radius=14,
+        glow_radius=4,
+        glow_alpha=10,
+        core_alpha=84,
+    )
+    add_scanlines(panel)
+    add_noise(panel, seed=frame_index * 19 + 7, count=110)
+    return panel
 
-    ring_center = (1110, 84)
-    for radius in (20, 34, 48):
-        draw_glow_circle(
-            image,
-            (ring_center[0] - radius, ring_center[1] - radius, ring_center[0] + radius, ring_center[1] + radius),
-            COLORS["cyan"] if radius != 34 else COLORS["teal"],
-            width=1,
-            glow_radius=7,
-            glow_alpha=55,
-            core_alpha=95,
+
+def build_panel_gif(
+    source_path: Path,
+    destination: Path,
+    *,
+    frame_step: int,
+    max_frames: int | None,
+    canvas_size: tuple[int, int],
+    content_size: tuple[int, int],
+    border_color: tuple[int, int, int],
+    duration_ms: int,
+    start_offset: int = 0,
+) -> None:
+    frames = sample_frames(source_path, step=frame_step, max_frames=max_frames)
+    frames = rotate_frames(frames, start_offset)
+    rendered = [
+        render_panel_frame(
+            frame,
+            frame_index=index,
+            total_frames=len(frames),
+            canvas_size=canvas_size,
+            content_size=content_size,
+            border_color=border_color,
         )
-    angle = phase * 2 * pi
-    dot_x = ring_center[0] + cos(angle) * 48
-    dot_y = ring_center[1] + sin(angle) * 48
-    ImageDraw.Draw(image).ellipse((dot_x - 4, dot_y - 4, dot_x + 4, dot_y + 4), fill=rgba(COLORS["teal"], 220))
-
-    ImageDraw.Draw(image).text((1018, 58), "LIVE", font=FONT_TINY, fill=rgba(COLORS["teal_soft"], 200))
-    ImageDraw.Draw(image).text((1006, 104), "SIGNAL", font=FONT_TINY, fill=rgba(COLORS["muted"], 180))
-    draw_circuit_mesh(image, frame_index)
-
-    add_scanlines(image)
-    add_noise(image, seed=frame_index * 17 + 5, count=900, opacity=26)
-    vignette = Image.new("L", image.size, 255)
-    vignette_draw = ImageDraw.Draw(vignette)
-    vignette_draw.rectangle((0, 0, WIDTH, HERO_HEIGHT), fill=225)
-    vignette = vignette.filter(ImageFilter.GaussianBlur(32))
-    mask = Image.merge("RGBA", (vignette, vignette, vignette, vignette))
-    return ImageChops.multiply(image, mask)
+        for index, frame in enumerate(frames)
+    ]
+    save_gif(destination, rendered, duration_ms)
 
 
 def render_divider_frame(frame_index: int) -> Image.Image:
     phase = frame_index / DIVIDER_FRAMES
-    image = vertical_gradient(WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
+    image = vertical_gradient(DIVIDER_WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
     add_grid(image, 34, x_shift=phase * 10)
 
     points = []
-    for x in range(0, WIDTH + 8, 8):
+    for x in range(0, DIVIDER_WIDTH + 8, 8):
         y = DIVIDER_HEIGHT / 2 + sin((x / 44.0) - phase * 2 * pi * 1.7) * 7 + sin((x / 13.0) + phase * 2 * pi * 2.8) * 2.2
         points.append((x, y))
     draw_glow_line(image, points, COLORS["cyan"], width=2, glow_radius=4, glow_alpha=84, core_alpha=210)
 
-    pulse_x = int(40 + (WIDTH - 80) * phase)
-    draw_glow_circle(image, (pulse_x - 10, 26, pulse_x + 10, 46), COLORS["teal"], width=2, glow_radius=6, glow_alpha=85, core_alpha=160)
-    ImageDraw.Draw(image).line((0, DIVIDER_HEIGHT / 2, WIDTH, DIVIDER_HEIGHT / 2), fill=rgba(COLORS["line"], 80), width=1)
+    pulse_x = int(40 + (DIVIDER_WIDTH - 80) * phase)
+    pulse_overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    pulse_draw = ImageDraw.Draw(pulse_overlay)
+    pulse_draw.ellipse((pulse_x - 10, 26, pulse_x + 10, 46), outline=rgba(COLORS["teal"], 180), width=2)
+    pulse_overlay = pulse_overlay.filter(ImageFilter.GaussianBlur(2))
+    image.alpha_composite(pulse_overlay)
+    ImageDraw.Draw(image).line((0, DIVIDER_HEIGHT / 2, DIVIDER_WIDTH, DIVIDER_HEIGHT / 2), fill=rgba(COLORS["line"], 80), width=1)
 
-    add_scanlines(image, opacity=10)
-    add_noise(image, seed=frame_index * 23 + 3, count=240, opacity=24)
+    add_scanlines(image, opacity=8)
+    add_noise(image, seed=frame_index * 23 + 3, count=220, opacity=20)
     return image
 
 
@@ -326,9 +249,30 @@ def save_gif(path: Path, frames: list[Image.Image], duration_ms: int) -> None:
 
 def build() -> None:
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    hero_frames = [render_hero_frame(i) for i in range(HERO_FRAMES)]
-    divider_frames = [render_divider_frame(i) for i in range(DIVIDER_FRAMES)]
-    save_gif(ASSETS_DIR / "hero-console.gif", hero_frames, 95)
+
+    build_panel_gif(
+        BRAIN_DIR / "Head-mri-animation.gif",
+        ASSETS_DIR / "head-mri-panel.gif",
+        frame_step=2,
+        max_frames=72,
+        canvas_size=(560, 320),
+        content_size=(500, 252),
+        border_color=COLORS["cyan"],
+        duration_ms=95,
+        start_offset=40,
+    )
+    build_panel_gif(
+        BRAIN_DIR / "Brainanim-FreeSurfer.gif",
+        ASSETS_DIR / "freesurfer-panel.gif",
+        frame_step=1,
+        max_frames=None,
+        canvas_size=(420, 300),
+        content_size=(360, 240),
+        border_color=COLORS["teal"],
+        duration_ms=110,
+    )
+
+    divider_frames = [render_divider_frame(index) for index in range(DIVIDER_FRAMES)]
     save_gif(ASSETS_DIR / "signal-divider.gif", divider_frames, 80)
 
 
