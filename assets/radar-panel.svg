@@ -1,0 +1,60 @@
+<svg width="760" height="760" viewBox="0 0 760 760" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#040814"/>
+      <stop offset="1" stop-color="#081C36"/>
+    </linearGradient>
+    <linearGradient id="trace" x1="116" y1="126" x2="630" y2="638" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#36F2FF"/>
+      <stop offset="1" stop-color="#7CFFB2"/>
+    </linearGradient>
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="760" height="760" rx="28" fill="url(#bg)"/>
+  <rect x="38" y="38" width="684" height="684" rx="24" stroke="#36F2FF" stroke-width="2" opacity="0.65"/>
+  <text x="60" y="78" fill="#36F2FF" font-family="Consolas, Monaco, monospace" font-size="20" letter-spacing="3">CAPABILITY RADAR // NEURAL LAB AXES</text>
+
+  <g opacity="0.26">
+    <path d="M380 110V650" stroke="#123F66" stroke-width="1.5"/>
+    <path d="M110 380H650" stroke="#123F66" stroke-width="1.5"/>
+    <path d="M178 178L582 582" stroke="#123F66" stroke-width="1.5"/>
+    <path d="M582 178L178 582" stroke="#123F66" stroke-width="1.5"/>
+  </g>
+
+  <g filter="url(#softGlow)">
+    <circle cx="380" cy="380" r="230" stroke="#36F2FF" stroke-width="2.5"/>
+    <circle cx="380" cy="380" r="174" stroke="#36F2FF" stroke-width="1.5" opacity="0.72"/>
+    <circle cx="380" cy="380" r="116" stroke="#36F2FF" stroke-width="1.5" opacity="0.56"/>
+    <circle cx="380" cy="380" r="58" stroke="#36F2FF" stroke-width="1.5" opacity="0.42"/>
+  </g>
+
+  <path d="M380 176L525 256L546 420L444 556L284 540L188 400L236 248L380 176Z" fill="url(#trace)" fill-opacity="0.18" stroke="#7CFFB2" stroke-width="4" filter="url(#softGlow)"/>
+
+  <circle cx="380" cy="176" r="8" fill="#36F2FF" filter="url(#softGlow)"/>
+  <circle cx="525" cy="256" r="8" fill="#7CFFB2" filter="url(#softGlow)"/>
+  <circle cx="546" cy="420" r="8" fill="#36F2FF" filter="url(#softGlow)"/>
+  <circle cx="444" cy="556" r="8" fill="#7CFFB2" filter="url(#softGlow)"/>
+  <circle cx="284" cy="540" r="8" fill="#36F2FF" filter="url(#softGlow)"/>
+  <circle cx="188" cy="400" r="8" fill="#7CFFB2" filter="url(#softGlow)"/>
+  <circle cx="236" cy="248" r="8" fill="#36F2FF" filter="url(#softGlow)"/>
+
+  <circle cx="380" cy="380" r="14" fill="#7CFFB2" filter="url(#softGlow)"/>
+
+  <text x="356" y="138" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="18">SYSTEMS</text>
+  <text x="574" y="250" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="18">INTELLIGENCE</text>
+  <text x="556" y="438" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="18">INTERFACE</text>
+  <text x="414" y="620" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="18">DEPLOYMENT</text>
+  <text x="108" y="438" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="18">STORYTELLING</text>
+  <text x="92" y="248" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="18">VISUAL LABS</text>
+
+  <rect x="78" y="628" width="604" height="74" rx="18" stroke="#7CFFB2" stroke-width="1.5"/>
+  <text x="102" y="660" fill="#7CFFB2" font-family="Consolas, Monaco, monospace" font-size="17">SCORING MODEL</text>
+  <text x="102" y="686" fill="#D4F8FF" font-family="Consolas, Monaco, monospace" font-size="15">The polygon is intentionally stylized: tune the adjacent skill matrix and badge groups to your real stack.</text>
+</svg>
