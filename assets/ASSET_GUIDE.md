@@ -1,36 +1,42 @@
 # Asset Guide
 
-This profile package uses a hybrid asset model:
-
-- Local static SVGs provide the dark HUD shells that keep the README visually consistent on GitHub light and dark themes.
-- Local GIFs carry the high-motion pieces because GitHub does not reliably support local SVG animation.
-- External SVG endpoints provide live telemetry cards and typing effects.
+This README uses a smaller and more technical asset set than the previous version.
 
 ## Included assets
 
-- `hero-neural.gif`
-  The main cinematic banner used in the hero section.
-- `divider-signal.gif`
-  The animated waveform divider used between major sections.
-- `boot-panel.svg`
-  A static system-boot panel with terminal framing and telemetry copy.
-- `radar-panel.svg`
-  A static capability radar visual for the interface section.
-- `footer-standby.svg`
-  The closing transmission panel.
+- `hero-console.gif`
+  Locally generated hero banner for the top of the profile. It blends AI, EEG, and medical imaging cues into a restrained engineering-console visual.
+- `signal-divider.gif`
+  Locally generated section divider used to separate major blocks with a single reusable telemetry line.
+- `console-band.svg`
+  Static SVG band used to summarize the three main research directions: representation learning, EEG/BCI signals, and medical imaging/computer vision.
+- `telemetry-gauge.gif`
+  Small telemetry indicator used near the hero badges.
 
-## Generation
+## Provenance
 
-The GIFs are generated locally from `scripts/generate_assets.py`.
+- `hero-console.gif`
+  Custom asset generated in this repository from `scripts/generate_assets.py`.
+- `signal-divider.gif`
+  Custom asset generated in this repository from `scripts/generate_assets.py`.
+- `console-band.svg`
+  Custom SVG authored in this repository. The circuit-trace visual language was informed by BGJar's circuit-board generator as a reference direction, but the final asset is local and authored here.
+- `telemetry-gauge.gif`
+  Downloaded from Loading.io's free `gauge` spinner sample and palette-adjusted locally to match the README color system.
+  Source sample URL: `https://loading.io/assets/mod/spinner/gauge/sample.gif`
+  License note: Loading.io's free license states that free-license items can be used without attribution.
+
+## Regeneration
+
+Generate the local motion assets with:
 
 ```bash
 python scripts/generate_assets.py
 ```
 
-The script uses Pillow only. No network access or external media downloads are required.
+The script uses Pillow only and does not require network access.
 
-## If you want to iterate later
+## Notes
 
-- Change palette values and frame counts in `scripts/generate_assets.py`.
-- Replace the static SVG text directly in the `.svg` files if you want different panel language.
-- If the public stats endpoints become unreliable, self-host `github-readme-stats` or render cards into this repo with GitHub Actions.
+- The README intentionally avoids large decorative panel assets. Most of the visual identity now comes from layout, restrained motion, and real repository content.
+- If the Loading.io telemetry asset is replaced later, record the new source and license here.
