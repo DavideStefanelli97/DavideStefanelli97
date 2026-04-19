@@ -13,7 +13,7 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
 -->
 
 <p align="center">
-  <strong>CLINICAL AI / COMPUTATIONAL NEUROSCIENCE / COMPUTER VISION</strong>
+  <strong>AI FOR HEALTH / COMPUTER VISION / NEUROENGINEERING</strong>
 </p>
 
 <h1 align="center">Davide Stefanelli</h1>
@@ -23,13 +23,12 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
     <td width="52%" valign="top">
       <strong>Neuroscience-focused Biomedical Engineer</strong><br/>
       <strong>Research Engineer in Computer Vision</strong><br/><br/>
-      Building AI-driven workflows for medical imaging, EEG analysis, and reproducible computer vision research.<br/><br/>
-      Focused on interpretable imaging pipelines, neuro signal analysis, and representation-driven evaluation across experimental workflows.
+      I work at the intersection of medical imaging, neuroscience, and computer vision.<br/><br/>
+      Most of what I build is about turning complex data into reliable workflows: segmentation and registration on DICOM images, EEG preprocessing and ERP / time-frequency analysis, and reproducible experiments that can actually be inspected, rerun, and extended.<br/><br/>
+      I care about interpretable systems, clean implementation, and research code that does not stop at a notebook screenshot.
     </td>
     <td width="48%" valign="top">
       <img src="./assets/head-mri-panel.gif" alt="Structural brain MRI animation panel" width="100%" />
-      <br/>
-      <sub>Primary imaging panel: structural brain MRI animation.</sub>
     </td>
   </tr>
 </table>
@@ -65,10 +64,12 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
       <img src="./assets/freesurfer-panel.gif" alt="FreeSurfer cortical surface animation panel" width="100%" />
     </td>
     <td width="62%" valign="top">
-      <strong>Cortical Surface Reconstruction</strong><br/>
-      FreeSurfer / FreeView secondary panel used to anchor the profile in computational neuroimaging and anatomical reconstruction.<br/><br/>
-      <strong>Current emphasis</strong><br/>
-      Segmentation, registration, EEG pipelines, and report-oriented experimentation with interpretable outputs.
+      <strong>What I do</strong><br/>
+      AI for medical imaging, neuro signal analysis, and computer vision pipelines with a strong preference for interpretable outputs over black-box polish.<br/><br/>
+      <strong>What I like building</strong><br/>
+      Reproducible workflows, clear evaluation setups, report-driven experiments, and technical systems that stay readable as they grow.<br/><br/>
+      <strong>Current directions</strong><br/>
+      Medical imaging analysis, EEG processing, representation learning, and computer vision problems where robust matching and structured evaluation matter.
     </td>
   </tr>
 </table>
