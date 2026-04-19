@@ -13,10 +13,8 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
 -->
 
 <p align="center">
-  <strong>AI FOR HEALTH / COMPUTER VISION / NEUROENGINEERING</strong>
+  <img src="./assets/profile-nameplate.svg" alt="DAVIDE STEFANELLI — From brain signals to intelligent systems" width="100%" />
 </p>
-
-<h1 align="center">Davide Stefanelli</h1>
 
 <table>
   <tr>
@@ -215,5 +213,5 @@ Email     // {{LINK_EMAIL}}
 {{LINK_EMAIL}} = [email protected]
 ```
 
-`assets/head-mri-panel.gif`, `assets/freesurfer-panel.gif`, and `assets/signal-divider.gif` are generated locally with `python scripts/generate_assets.py` from the approved source GIFs in `assets/brain-candidates`.
+`assets/profile-nameplate.svg`, `assets/head-mri-panel.gif`, `assets/freesurfer-panel.gif`, and `assets/signal-divider.gif` are generated locally with `python scripts/generate_assets.py`.
 </details>
