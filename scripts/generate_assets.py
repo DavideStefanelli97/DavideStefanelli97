@@ -165,52 +165,81 @@ def build_ignition_groups_markup(
     return "".join(groups)
 
 
+def build_noise_track(sample_count: int, *, rng: Random, anchor_step: int, amplitude: float) -> list[float]:
+    anchor_count = (sample_count - 1) // anchor_step + 3
+    anchors = [rng.uniform(-1.0, 1.0) for _ in range(anchor_count)]
+    values: list[float] = []
+    for index in range(sample_count):
+        anchor_index = index // anchor_step
+        blend = (index % anchor_step) / anchor_step
+        smooth = blend * blend * (3.0 - 2.0 * blend)
+        left = anchors[anchor_index]
+        right = anchors[anchor_index + 1]
+        values.append(((1.0 - smooth) * left + smooth * right) * amplitude)
+    return values
+
+
 def inject_mixed_waking_transients(series: list[float], *, seed: int) -> None:
     rng = Random(seed)
     zones = (
-        (0.12, 0.17),
-        (0.27, 0.35),
-        (0.45, 0.53),
-        (0.63, 0.71),
-        (0.8, 0.88),
+        (0.08, 0.11),
+        (0.2, 0.27),
+        (0.38, 0.44),
+        (0.56, 0.63),
+        (0.74, 0.81),
+        (0.87, 0.92),
     )
     last_index = len(series) - 1
     for low, high in zones:
         center = int(rng.uniform(low, high) * last_index)
-        polarity = 1.0 if rng.random() > 0.28 else -1.0
-        sharp_amp = rng.uniform(5.8, 8.4)
-        pre_amp = sharp_amp * rng.uniform(0.14, 0.22)
-        slow_amp = sharp_amp * rng.uniform(0.34, 0.48)
-        rebound_amp = sharp_amp * rng.uniform(0.1, 0.18)
-        for index in range(max(0, center - 28), min(len(series), center + 42)):
+        polarity = 1.0 if rng.random() > 0.34 else -1.0
+        sharp_amp = rng.uniform(8.8, 12.8)
+        lead_amp = sharp_amp * rng.uniform(0.12, 0.2)
+        slow_amp = sharp_amp * rng.uniform(0.34, 0.46)
+        settle_amp = sharp_amp * rng.uniform(0.12, 0.22)
+        ripple_amp = sharp_amp * rng.uniform(0.08, 0.14)
+        for index in range(max(0, center - 34), min(len(series), center + 56)):
             dx = index - center
-            series[index] += polarity * pre_amp * exp(-((dx + 8.0) / 5.6) ** 2)
-            series[index] += polarity * sharp_amp * exp(-(dx / 2.4) ** 2)
-            series[index] -= polarity * slow_amp * exp(-((dx - 8.5) / 7.2) ** 2)
-            series[index] += polarity * rebound_amp * exp(-((dx - 18.0) / 6.0) ** 2)
+            series[index] -= polarity * lead_amp * exp(-((dx + 8.5) / 5.8) ** 2)
+            series[index] += polarity * sharp_amp * exp(-(dx / 1.75) ** 2)
+            series[index] -= polarity * slow_amp * exp(-((dx - 5.5) / 4.2) ** 2)
+            series[index] += polarity * settle_amp * exp(-((dx - 16.0) / 7.0) ** 2)
+            series[index] += polarity * ripple_amp * exp(-((dx - 6.5) / 12.5) ** 2) * sin((dx - 6.5) * 0.9)
 
 
 def build_eeg_series(sample_count: int, *, seed: int) -> list[float]:
     rng = Random(seed)
-    phases = [rng.random() * 2 * pi for _ in range(8)]
+    phases = [rng.random() * 2 * pi for _ in range(10)]
+    slow_noise = build_noise_track(sample_count, rng=rng, anchor_step=44, amplitude=0.62)
+    contour_noise = build_noise_track(sample_count, rng=rng, anchor_step=15, amplitude=0.34)
+    micro_noise = build_noise_track(sample_count, rng=rng, anchor_step=6, amplitude=0.14)
     series: list[float] = []
     last_index = max(sample_count - 1, 1)
     for index in range(sample_count):
         t = index / last_index
-        slow = 0.72 * sin(2 * pi * 3.0 * t + phases[0])
-        slow += 0.34 * sin(2 * pi * 6.0 * t + phases[1])
-        alpha_envelope = 0.8 + 0.2 * sin(2 * pi * 2.0 * t + phases[2])
-        alpha_envelope += 0.08 * sin(2 * pi * 5.0 * t + phases[3])
-        alpha = alpha_envelope * 1.65 * sin(2 * pi * 17.0 * t + phases[4])
-        beta = (0.42 + 0.08 * sin(2 * pi * 4.0 * t + phases[5])) * 0.95 * sin(2 * pi * 31.0 * t + phases[6])
-        micro = 0.3 * sin(2 * pi * 43.0 * t + phases[7])
-        micro += 0.18 * sin(2 * pi * 57.0 * t + phases[0] * 0.6)
-        series.append(slow + alpha + beta + micro)
+        drift = 0.82 * sin(2 * pi * 1.2 * t + phases[0])
+        drift += 0.46 * sin(2 * pi * 2.6 * t + phases[1])
+        drift += 0.2 * slow_noise[index]
+
+        alpha_envelope = 0.76 + 0.24 * sin(2 * pi * 1.6 * t + phases[2])
+        alpha_envelope += 0.12 * sin(2 * pi * 3.8 * t + phases[3])
+        alpha_envelope += 0.08 * slow_noise[index]
+        alpha = alpha_envelope * 1.95 * sin(2 * pi * 18.5 * t + phases[4] + contour_noise[index] * 0.75)
+
+        beta_envelope = 0.34 + 0.14 * sin(2 * pi * 2.9 * t + phases[5])
+        beta = beta_envelope * 1.18 * sin(2 * pi * 34.0 * t + phases[6] + contour_noise[index] * 1.05)
+
+        texture = 0.38 * sin(2 * pi * 51.0 * t + phases[7] + micro_noise[index] * 1.8)
+        texture += 0.22 * sin(2 * pi * 63.0 * t + phases[8])
+        texture += micro_noise[index]
+
+        series.append(drift + alpha + beta + texture + contour_noise[index] * 0.55)
 
     burst_specs = (
-        (0.19, 18.0, 1.05, 0.62),
-        (0.56, 22.0, 0.92, 0.54),
-        (0.78, 16.0, 0.74, 0.68),
+        (0.15, 20.0, 1.35, 0.9),
+        (0.43, 24.0, 1.18, 0.72),
+        (0.69, 18.0, 1.08, 0.84),
+        (0.83, 15.0, 0.94, 0.94),
     )
     for center_ratio, width, amplitude, frequency in burst_specs:
         center = center_ratio * last_index
@@ -225,7 +254,7 @@ def build_eeg_series(sample_count: int, *, seed: int) -> list[float]:
     mean = sum(series) / len(series)
     centered = [value - mean for value in series]
     peak = max(abs(value) for value in centered) or 1.0
-    scale = 14.5 / peak
+    scale = 18.8 / peak
     return [value * scale for value in centered]
 
 
@@ -269,13 +298,13 @@ def build_nameplate_svg(destination: Path) -> None:
     signal_view_y = 264
     signal_view_width = title_width + 68
     signal_view_height = 58
-    signal_baseline = 31
-    signal_loop_width = 1680
-    signal_sample_step = 4
+    signal_baseline = 30
+    signal_loop_width = 1800
+    signal_sample_step = 3
     signal_sample_count = signal_loop_width // signal_sample_step + 1
-    eeg_series = build_eeg_series(signal_sample_count, seed=137)
+    eeg_series = build_eeg_series(signal_sample_count, seed=211)
     eeg_path = series_to_path(eeg_series, x_start=0, x_step=signal_sample_step, baseline=signal_baseline)
-    signal_beam_width = 156
+    signal_beam_width = 208
 
     left_trace_paths = [
         [(86, 228), (144, 228), (174, 244), (228, 244)],
@@ -389,16 +418,16 @@ def build_nameplate_svg(destination: Path) -> None:
   </clipPath>
   <linearGradient id="signalBeamGradient" x1="0" y1="0" x2="{signal_beam_width}" y2="0" gradientUnits="userSpaceOnUse">
     <stop stop-color="#FFFFFF" stop-opacity="0"/>
-    <stop offset="0.18" stop-color="{hex_color(COLORS["cyan"])}" stop-opacity="0.08"/>
-    <stop offset="0.46" stop-color="#FFFFFF" stop-opacity="0.34"/>
-    <stop offset="0.7" stop-color="{hex_color(COLORS["teal"])}" stop-opacity="0.12"/>
+    <stop offset="0.18" stop-color="{hex_color(COLORS["cyan"])}" stop-opacity="0.14"/>
+    <stop offset="0.48" stop-color="#FFFFFF" stop-opacity="0.48"/>
+    <stop offset="0.72" stop-color="{hex_color(COLORS["teal"])}" stop-opacity="0.2"/>
     <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
   </linearGradient>
   <linearGradient id="signalFocusGradient" x1="0" y1="0" x2="{signal_beam_width}" y2="0" gradientUnits="userSpaceOnUse">
     <stop stop-color="#000000" stop-opacity="0"/>
-    <stop offset="0.26" stop-color="#7F7F7F" stop-opacity="0.62"/>
+    <stop offset="0.24" stop-color="#7F7F7F" stop-opacity="0.72"/>
     <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="1"/>
-    <stop offset="0.76" stop-color="#7F7F7F" stop-opacity="0.62"/>
+    <stop offset="0.76" stop-color="#7F7F7F" stop-opacity="0.72"/>
     <stop offset="1" stop-color="#000000" stop-opacity="0"/>
   </linearGradient>
   <mask id="signalFocusMask" maskUnits="userSpaceOnUse">
@@ -483,24 +512,24 @@ def build_nameplate_svg(destination: Path) -> None:
   .wave-base {{
     fill: none;
     stroke: {hex_color(COLORS["line"])};
-    stroke-width: 1.6;
+    stroke-width: 1.9;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.58;
+    opacity: 0.72;
   }}
   .wave-glow {{
     fill: none;
     stroke: {hex_color(COLORS["cyan"])};
-    stroke-width: 3.2;
+    stroke-width: 4.4;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.32;
+    opacity: 0.42;
     filter: url(#softGlow);
   }}
   .wave-core {{
     fill: none;
     stroke: #DDF7FF;
-    stroke-width: 1.35;
+    stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
     opacity: 0.94;
@@ -508,17 +537,17 @@ def build_nameplate_svg(destination: Path) -> None:
   .wave-focus {{
     fill: none;
     stroke: #FFFFFF;
-    stroke-width: 2.4;
+    stroke-width: 3.1;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.96;
+    opacity: 0.98;
     filter: url(#titleGlow);
   }}
   .signal-sweep {{
-    animation: signalSweep 4.9s ease-in-out infinite;
+    animation: signalSweep 4.8s linear infinite;
   }}
   .signal-beam {{
-    opacity: 0.42;
+    opacity: 0.58;
   }}
   .panel-border {{
     animation: borderPulse 6s ease-in-out infinite;
@@ -573,8 +602,8 @@ def build_nameplate_svg(destination: Path) -> None:
   }}
   @keyframes signalSweep {{
     0% {{ transform: translateX(0); opacity: 0; }}
-    10% {{ opacity: 0.44; }}
-    70% {{ opacity: 0.4; }}
+    8% {{ opacity: 0.52; }}
+    62% {{ opacity: 0.48; }}
     100% {{ transform: translateX({signal_view_width + signal_beam_width * 2}px); opacity: 0; }}
   }}
   @keyframes borderPulse {{
