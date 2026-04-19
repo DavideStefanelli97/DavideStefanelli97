@@ -17,8 +17,9 @@ DIVIDER_HEIGHT = 72
 DIVIDER_FRAMES = 16
 NAMEPLATE_WIDTH = 1200
 NAMEPLATE_HEIGHT = 360
-NAMEPLATE_TITLE = "DAVIDE STEFANELLI"
+NAMEPLATE_TITLE = "Davide Stefanelli"
 NAMEPLATE_TAGLINE = "From brain signals to intelligent systems"
+NAMEPLATE_DESCRIPTOR = "AI / Computer Vision / Neuro-engineering / Neuro-imaging / NeuroScience"
 
 COLORS = {
     "bg_top": (7, 15, 26),
@@ -57,6 +58,15 @@ BITMAP_FONT = {
     "X": ("10001", "10001", "01010", "00100", "01010", "10001", "10001"),
     "Y": ("10001", "10001", "01010", "00100", "00100", "00100", "00100"),
     "Z": ("11111", "00001", "00010", "00100", "01000", "10000", "11111"),
+    "a": ("00000", "00000", "01110", "00001", "01111", "10001", "01111"),
+    "d": ("00001", "00001", "01111", "10001", "10001", "10001", "01111"),
+    "e": ("00000", "00000", "01110", "10001", "11111", "10000", "01110"),
+    "f": ("00110", "01001", "01000", "11100", "01000", "01000", "01000"),
+    "i": ("00100", "00000", "01100", "00100", "00100", "00100", "01110"),
+    "l": ("01100", "00100", "00100", "00100", "00100", "00100", "01110"),
+    "n": ("00000", "00000", "11110", "10001", "10001", "10001", "10001"),
+    "t": ("00100", "00100", "11111", "00100", "00100", "00101", "00010"),
+    "v": ("00000", "00000", "10001", "10001", "10001", "01010", "00100"),
     " ": ("000", "000", "000", "000", "000", "000", "000"),
 }
 
@@ -160,19 +170,21 @@ def build_wave_points(
     x_start: int,
     x_end: int,
     baseline: float,
-    step: int = 8,
+    step: int = 6,
 ) -> list[tuple[float, float]]:
     points: list[tuple[float, float]] = []
     for x in range(x_start, x_end + step, step):
         local = x - x_start
-        envelope = 0.72 + 0.18 * sin(local / 210.0)
-        signal = sin(local / 34.0) * 6.8 * envelope
-        signal += sin(local / 11.5) * 1.3
-        for center, scale in ((180, 1.0), (530, 0.82), (860, 1.08)):
-            local_phase = (local - center) / 17.5
-            positive = exp(-((local_phase - 0.55) ** 2)) * 8.2 * scale
-            negative = exp(-((local_phase + 0.18) ** 2)) * 4.9 * scale
-            signal += positive - negative
+        signal = sin(local / 29.0) * 1.4
+        signal += sin(local / 10.5) * 0.75
+        signal += sin(local / 5.8) * 0.32
+        for center, scale in ((140, 0.78), (300, 0.58), (470, 0.94), (690, 0.7), (885, 1.0)):
+            local_phase = local - center
+            pre_ripple = exp(-((local_phase + 18.0) / 16.0) ** 2) * 1.9 * scale
+            spike = exp(-((local_phase) / 5.2) ** 2) * 16.5 * scale
+            slow_wave = exp(-((local_phase - 17.0) / 17.0) ** 2) * 6.8 * scale
+            rebound = exp(-((local_phase - 33.0) / 11.0) ** 2) * 2.5 * scale
+            signal += pre_ripple + spike - slow_wave + rebound
         points.append((x, baseline - signal))
     return points
 
@@ -188,7 +200,7 @@ def build_nameplate_svg(destination: Path) -> None:
     pixel_inset = 0.9
     total_columns = bitmap_text_columns(NAMEPLATE_TITLE, gap=1)
     title_x = (NAMEPLATE_WIDTH - total_columns * cell) // 2
-    title_y = 86
+    title_y = 72
     title_pixels, _, title_height = build_bitmap_pixels(
         NAMEPLATE_TITLE,
         origin_x=title_x,
@@ -209,34 +221,33 @@ def build_nameplate_svg(destination: Path) -> None:
     )
 
     wave_points = build_wave_points(
-        x_start=title_x - 18,
-        x_end=title_right + 18,
-        baseline=280,
+        x_start=title_x - 34,
+        x_end=title_right + 34,
+        baseline=296,
     )
     wave_path = points_to_path(wave_points)
 
     left_trace_paths = [
-        [(74, 104), (160, 104), (198, 128), (title_x - 28, 128)],
-        [(88, 154), (146, 154), (184, 138), (title_x - 40, 138)],
-        [(70, 234), (154, 234), (194, 250), (title_x - 54, 250)],
+        [(86, 228), (144, 228), (174, 244), (228, 244)],
+        [(94, 270), (152, 270), (186, 286), (236, 286)],
     ]
     right_trace_paths = [mirror_points(path, NAMEPLATE_WIDTH) for path in left_trace_paths]
 
-    left_nodes = [(74, 104), (198, 128), (146, 154), (184, 138), (194, 250)]
+    left_nodes = [(86, 228), (174, 244), (152, 270), (186, 286)]
     right_nodes = mirror_points(left_nodes, NAMEPLATE_WIDTH)
 
     grid_lines = []
-    for x in range(panel_x + 44, panel_x + panel_width, 52):
+    for x in range(panel_x + 78, panel_x + panel_width - 20, 108):
         grid_lines.append(
             f'<line x1="{x}" y1="{panel_y + 14}" x2="{x}" y2="{panel_y + panel_height - 14}" class="grid"/>'
         )
-    for y in range(panel_y + 28, panel_y + panel_height - 18, 38):
+    for y in range(panel_y + 40, panel_y + panel_height - 24, 78):
         grid_lines.append(
             f'<line x1="{panel_x + 14}" y1="{y}" x2="{panel_x + panel_width - 14}" y2="{y}" class="grid"/>'
         )
 
     scanlines = []
-    for y in range(panel_y + 8, panel_y + panel_height - 4, 4):
+    for y in range(panel_y + 10, panel_y + panel_height - 4, 6):
         scanlines.append(
             f'<line x1="{panel_x + 6}" y1="{y}" x2="{panel_x + panel_width - 6}" y2="{y}" class="scanline"/>'
         )
@@ -248,18 +259,19 @@ def build_nameplate_svg(destination: Path) -> None:
         f'<circle cx="{x}" cy="{y}" r="4.2" class="trace-node"/>' for x, y in left_nodes + right_nodes
     )
 
-    tiny_label_y = 58
     title_shadow_y = 4
-    tagline_y = 212
-    tagline_capsule_width = 456
-    tagline_capsule_height = 34
+    tagline_y = 198
+    descriptor_y = 236
+    tagline_capsule_width = 492
+    tagline_capsule_height = 36
     tagline_capsule_x = (NAMEPLATE_WIDTH - tagline_capsule_width) // 2
     tagline_capsule_y = tagline_y - 24
-    divider_y = tagline_y + 22
+    descriptor_divider_y = descriptor_y + 22
+    nameplate_desc = f"{NAMEPLATE_TAGLINE}. {NAMEPLATE_DESCRIPTOR}"
 
     svg = f"""<svg width="{NAMEPLATE_WIDTH}" height="{NAMEPLATE_HEIGHT}" viewBox="0 0 {NAMEPLATE_WIDTH} {NAMEPLATE_HEIGHT}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="hero-title hero-desc">
 <title id="hero-title">{NAMEPLATE_TITLE}</title>
-<desc id="hero-desc">{NAMEPLATE_TAGLINE}</desc>
+<desc id="hero-desc">{nameplate_desc}</desc>
 <defs>
   <linearGradient id="panelBg" x1="0" y1="{panel_y}" x2="0" y2="{panel_y + panel_height}" gradientUnits="userSpaceOnUse">
     <stop stop-color="{hex_color(COLORS["bg_top"])}"/>
@@ -327,12 +339,12 @@ def build_nameplate_svg(destination: Path) -> None:
 <style>
   .grid {{
     stroke: {hex_color(COLORS["line"])};
-    stroke-opacity: 0.24;
+    stroke-opacity: 0.12;
     stroke-width: 1;
   }}
   .scanline {{
     stroke: #FFFFFF;
-    stroke-opacity: 0.04;
+    stroke-opacity: 0.026;
     stroke-width: 1;
   }}
   .trace-path {{
@@ -341,7 +353,7 @@ def build_nameplate_svg(destination: Path) -> None:
     stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.72;
+    opacity: 0.46;
     filter: url(#softGlow);
   }}
   .trace-node {{
@@ -376,25 +388,26 @@ def build_nameplate_svg(destination: Path) -> None:
   }}
   .tagline {{
     font-family: Consolas, Monaco, monospace;
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 700;
-    letter-spacing: 1.1px;
+    letter-spacing: 0.7px;
     fill: url(#taglineFill);
     text-anchor: middle;
     animation: taglinePulse 2.8s ease-in-out infinite;
   }}
-  .tiny-label {{
+  .descriptor {{
     font-family: Consolas, Monaco, monospace;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 2.3px;
+    letter-spacing: 0.45px;
     fill: #7AA0B8;
-    opacity: 0.88;
+    text-anchor: middle;
+    opacity: 0.96;
   }}
   .wave-base {{
     fill: none;
     stroke: {hex_color(COLORS["line"])};
-    stroke-width: 2;
+    stroke-width: 1.8;
     stroke-linecap: round;
     stroke-linejoin: round;
     opacity: 0.72;
@@ -402,22 +415,22 @@ def build_nameplate_svg(destination: Path) -> None:
   .wave-glow {{
     fill: none;
     stroke: {hex_color(COLORS["cyan"])};
-    stroke-width: 2.2;
+    stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.62;
+    opacity: 0.74;
     filter: url(#softGlow);
   }}
   .wave-pulse {{
     fill: none;
     stroke: #FFFFFF;
-    stroke-width: 2.6;
+    stroke-width: 2.2;
     stroke-linecap: round;
     stroke-linejoin: round;
-    stroke-dasharray: 48 320;
-    opacity: 0.78;
+    stroke-dasharray: 26 210;
+    opacity: 0.72;
     filter: url(#titleGlow);
-    animation: waveTravel 6.2s linear infinite;
+    animation: waveTravel 5.4s linear infinite;
   }}
   .panel-border {{
     animation: borderPulse 6s ease-in-out infinite;
@@ -467,8 +480,8 @@ def build_nameplate_svg(destination: Path) -> None:
     50% {{ opacity: 0.95; transform: scale(1.12); }}
   }}
   @keyframes waveTravel {{
-    from {{ stroke-dashoffset: 380; }}
-    to {{ stroke-dashoffset: -760; }}
+    from {{ stroke-dashoffset: 260; }}
+    to {{ stroke-dashoffset: -620; }}
   }}
   @keyframes borderPulse {{
     0%, 100% {{ opacity: 0.56; }}
@@ -509,16 +522,14 @@ def build_nameplate_svg(destination: Path) -> None:
 <g clip-path="url(#panelClip)">
   {''.join(grid_lines)}
   <g class="scanlines">{''.join(scanlines)}</g>
-  <path d="M{panel_x + 1} {panel_y + 60} H{panel_x + panel_width - 1}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.26"/>
-  <path d="M{panel_x + 1} {divider_y} H{panel_x + panel_width - 1}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.26"/>
+  <path d="M{panel_x + 1} {descriptor_divider_y} H{panel_x + panel_width - 1}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.22"/>
   {trace_paths_markup}
   {trace_nodes_markup}
-  <path d="M{tagline_capsule_x - 64} {divider_y} H{tagline_capsule_x - 14}" stroke="{hex_color(COLORS["teal"])}" stroke-opacity="0.48"/>
-  <path d="M{tagline_capsule_x + tagline_capsule_width + 14} {divider_y} H{tagline_capsule_x + tagline_capsule_width + 64}" stroke="{hex_color(COLORS["cyan"])}" stroke-opacity="0.48"/>
+  <path d="M{tagline_capsule_x - 54} {descriptor_divider_y} H{tagline_capsule_x - 18}" stroke="{hex_color(COLORS["teal"])}" stroke-opacity="0.32"/>
+  <path d="M{tagline_capsule_x + tagline_capsule_width + 18} {descriptor_divider_y} H{tagline_capsule_x + tagline_capsule_width + 54}" stroke="{hex_color(COLORS["cyan"])}" stroke-opacity="0.32"/>
   <use href="#eegWave" class="wave-base"/>
   <use href="#eegWave" class="wave-glow"/>
   <use href="#eegWave" class="wave-pulse"/>
-  <text x="{NAMEPLATE_WIDTH / 2}" y="{tiny_label_y}" class="tiny-label" text-anchor="middle">AI / COMPUTER VISION / NEUROENGINEERING</text>
   <rect x="{tagline_capsule_x}" y="{tagline_capsule_y}" width="{tagline_capsule_width}" height="{tagline_capsule_height}" rx="17" fill="#0D1F2F" fill-opacity="0.72" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.55"/>
   <use href="#titlePixels" x="0" y="{title_shadow_y}" fill="#06101A" opacity="0.84"/>
   <use href="#titlePixels" fill="url(#titleFill)"/>
@@ -543,6 +554,7 @@ def build_nameplate_svg(destination: Path) -> None:
     <use href="#titlePixels" fill="#D5E7F4"/>
   </g>
   <text x="{NAMEPLATE_WIDTH / 2}" y="{tagline_y}" class="tagline">{NAMEPLATE_TAGLINE}</text>
+  <text x="{NAMEPLATE_WIDTH / 2}" y="{descriptor_y}" class="descriptor">{NAMEPLATE_DESCRIPTOR}</text>
 </g>
 <rect x="{panel_x}" y="{panel_y}" width="{panel_width}" height="{panel_height}" rx="{panel_radius}" stroke="url(#panelBorder)" stroke-width="2.2" class="panel-border" filter="url(#panelGlow)"/>
 </svg>

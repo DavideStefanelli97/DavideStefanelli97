@@ -13,7 +13,7 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
 -->
 
 <p align="center">
-  <img src="./assets/profile-nameplate.svg" alt="DAVIDE STEFANELLI — From brain signals to intelligent systems" width="100%" />
+  <img src="./assets/profile-nameplate.svg" alt="Davide Stefanelli — From brain signals to intelligent systems — AI / Computer Vision / Neuro-engineering / Neuro-imaging / NeuroScience" width="100%" />
 </p>
 
 <table>
