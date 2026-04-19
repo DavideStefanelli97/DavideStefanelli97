@@ -165,28 +165,73 @@ def build_ignition_groups_markup(
     return "".join(groups)
 
 
-def build_wave_points(
-    *,
-    x_start: int,
-    x_end: int,
-    baseline: float,
-    step: int = 6,
-) -> list[tuple[float, float]]:
-    points: list[tuple[float, float]] = []
-    for x in range(x_start, x_end + step, step):
-        local = x - x_start
-        signal = sin(local / 29.0) * 1.4
-        signal += sin(local / 10.5) * 0.75
-        signal += sin(local / 5.8) * 0.32
-        for center, scale in ((140, 0.78), (300, 0.58), (470, 0.94), (690, 0.7), (885, 1.0)):
-            local_phase = local - center
-            pre_ripple = exp(-((local_phase + 18.0) / 16.0) ** 2) * 1.9 * scale
-            spike = exp(-((local_phase) / 5.2) ** 2) * 16.5 * scale
-            slow_wave = exp(-((local_phase - 17.0) / 17.0) ** 2) * 6.8 * scale
-            rebound = exp(-((local_phase - 33.0) / 11.0) ** 2) * 2.5 * scale
-            signal += pre_ripple + spike - slow_wave + rebound
-        points.append((x, baseline - signal))
-    return points
+def inject_mixed_waking_transients(series: list[float], *, seed: int) -> None:
+    rng = Random(seed)
+    zones = (
+        (0.12, 0.17),
+        (0.27, 0.35),
+        (0.45, 0.53),
+        (0.63, 0.71),
+        (0.8, 0.88),
+    )
+    last_index = len(series) - 1
+    for low, high in zones:
+        center = int(rng.uniform(low, high) * last_index)
+        polarity = 1.0 if rng.random() > 0.28 else -1.0
+        sharp_amp = rng.uniform(5.8, 8.4)
+        pre_amp = sharp_amp * rng.uniform(0.14, 0.22)
+        slow_amp = sharp_amp * rng.uniform(0.34, 0.48)
+        rebound_amp = sharp_amp * rng.uniform(0.1, 0.18)
+        for index in range(max(0, center - 28), min(len(series), center + 42)):
+            dx = index - center
+            series[index] += polarity * pre_amp * exp(-((dx + 8.0) / 5.6) ** 2)
+            series[index] += polarity * sharp_amp * exp(-(dx / 2.4) ** 2)
+            series[index] -= polarity * slow_amp * exp(-((dx - 8.5) / 7.2) ** 2)
+            series[index] += polarity * rebound_amp * exp(-((dx - 18.0) / 6.0) ** 2)
+
+
+def build_eeg_series(sample_count: int, *, seed: int) -> list[float]:
+    rng = Random(seed)
+    phases = [rng.random() * 2 * pi for _ in range(8)]
+    series: list[float] = []
+    last_index = max(sample_count - 1, 1)
+    for index in range(sample_count):
+        t = index / last_index
+        slow = 0.72 * sin(2 * pi * 3.0 * t + phases[0])
+        slow += 0.34 * sin(2 * pi * 6.0 * t + phases[1])
+        alpha_envelope = 0.8 + 0.2 * sin(2 * pi * 2.0 * t + phases[2])
+        alpha_envelope += 0.08 * sin(2 * pi * 5.0 * t + phases[3])
+        alpha = alpha_envelope * 1.65 * sin(2 * pi * 17.0 * t + phases[4])
+        beta = (0.42 + 0.08 * sin(2 * pi * 4.0 * t + phases[5])) * 0.95 * sin(2 * pi * 31.0 * t + phases[6])
+        micro = 0.3 * sin(2 * pi * 43.0 * t + phases[7])
+        micro += 0.18 * sin(2 * pi * 57.0 * t + phases[0] * 0.6)
+        series.append(slow + alpha + beta + micro)
+
+    burst_specs = (
+        (0.19, 18.0, 1.05, 0.62),
+        (0.56, 22.0, 0.92, 0.54),
+        (0.78, 16.0, 0.74, 0.68),
+    )
+    for center_ratio, width, amplitude, frequency in burst_specs:
+        center = center_ratio * last_index
+        for index in range(sample_count):
+            dx = index - center
+            envelope = exp(-((dx / width) ** 2))
+            phase = (dx / width) * 2 * pi * frequency
+            series[index] += envelope * amplitude * sin(phase)
+
+    inject_mixed_waking_transients(series, seed=seed + 17)
+
+    mean = sum(series) / len(series)
+    centered = [value - mean for value in series]
+    peak = max(abs(value) for value in centered) or 1.0
+    scale = 14.5 / peak
+    return [value * scale for value in centered]
+
+
+def series_to_path(series: list[float], *, x_start: float, x_step: float, baseline: float) -> str:
+    points = [(x_start + index * x_step, baseline - value) for index, value in enumerate(series)]
+    return points_to_path(points)
 
 
 def build_nameplate_svg(destination: Path) -> None:
@@ -220,12 +265,17 @@ def build_nameplate_svg(destination: Path) -> None:
         total_columns=total_columns,
     )
 
-    wave_points = build_wave_points(
-        x_start=title_x - 34,
-        x_end=title_right + 34,
-        baseline=296,
-    )
-    wave_path = points_to_path(wave_points)
+    signal_view_x = title_x - 34
+    signal_view_y = 264
+    signal_view_width = title_width + 68
+    signal_view_height = 58
+    signal_baseline = 31
+    signal_loop_width = 1680
+    signal_sample_step = 4
+    signal_sample_count = signal_loop_width // signal_sample_step + 1
+    eeg_series = build_eeg_series(signal_sample_count, seed=137)
+    eeg_path = series_to_path(eeg_series, x_start=0, x_step=signal_sample_step, baseline=signal_baseline)
+    signal_beam_width = 156
 
     left_trace_paths = [
         [(86, 228), (144, 228), (174, 244), (228, 244)],
@@ -334,7 +384,30 @@ def build_nameplate_svg(destination: Path) -> None:
   <clipPath id="glitchSliceC">
     <rect x="{title_x - 6}" y="{title_y + 54}" width="{title_width + 12}" height="15" rx="5"/>
   </clipPath>
-  <path id="eegWave" d="{wave_path}"/>
+  <clipPath id="signalClip">
+    <rect x="{signal_view_x}" y="{signal_view_y}" width="{signal_view_width}" height="{signal_view_height}" rx="16"/>
+  </clipPath>
+  <linearGradient id="signalBeamGradient" x1="0" y1="0" x2="{signal_beam_width}" y2="0" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFFFFF" stop-opacity="0"/>
+    <stop offset="0.18" stop-color="{hex_color(COLORS["cyan"])}" stop-opacity="0.08"/>
+    <stop offset="0.46" stop-color="#FFFFFF" stop-opacity="0.34"/>
+    <stop offset="0.7" stop-color="{hex_color(COLORS["teal"])}" stop-opacity="0.12"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="signalFocusGradient" x1="0" y1="0" x2="{signal_beam_width}" y2="0" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#000000" stop-opacity="0"/>
+    <stop offset="0.26" stop-color="#7F7F7F" stop-opacity="0.62"/>
+    <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="1"/>
+    <stop offset="0.76" stop-color="#7F7F7F" stop-opacity="0.62"/>
+    <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+  </linearGradient>
+  <mask id="signalFocusMask" maskUnits="userSpaceOnUse">
+    <rect x="{signal_view_x}" y="{signal_view_y}" width="{signal_view_width}" height="{signal_view_height}" fill="black"/>
+    <g class="signal-sweep">
+      <rect x="{signal_view_x - signal_beam_width}" y="{signal_view_y}" width="{signal_beam_width}" height="{signal_view_height}" fill="url(#signalFocusGradient)"/>
+    </g>
+  </mask>
+  <path id="eegSegment" d="{eeg_path}"/>
 </defs>
 <style>
   .grid {{
@@ -404,33 +477,48 @@ def build_nameplate_svg(destination: Path) -> None:
     text-anchor: middle;
     opacity: 0.96;
   }}
+  .wave-stream {{
+    animation: waveScroll 7.2s linear infinite;
+  }}
   .wave-base {{
     fill: none;
     stroke: {hex_color(COLORS["line"])};
-    stroke-width: 1.8;
+    stroke-width: 1.6;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.72;
+    opacity: 0.58;
   }}
   .wave-glow {{
     fill: none;
     stroke: {hex_color(COLORS["cyan"])};
-    stroke-width: 2;
+    stroke-width: 3.2;
     stroke-linecap: round;
     stroke-linejoin: round;
-    opacity: 0.74;
+    opacity: 0.32;
     filter: url(#softGlow);
   }}
-  .wave-pulse {{
+  .wave-core {{
     fill: none;
-    stroke: #FFFFFF;
-    stroke-width: 2.2;
+    stroke: #DDF7FF;
+    stroke-width: 1.35;
     stroke-linecap: round;
     stroke-linejoin: round;
-    stroke-dasharray: 26 210;
-    opacity: 0.72;
+    opacity: 0.94;
+  }}
+  .wave-focus {{
+    fill: none;
+    stroke: #FFFFFF;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.96;
     filter: url(#titleGlow);
-    animation: waveTravel 5.4s linear infinite;
+  }}
+  .signal-sweep {{
+    animation: signalSweep 4.9s ease-in-out infinite;
+  }}
+  .signal-beam {{
+    opacity: 0.42;
   }}
   .panel-border {{
     animation: borderPulse 6s ease-in-out infinite;
@@ -479,9 +567,15 @@ def build_nameplate_svg(destination: Path) -> None:
     0%, 100% {{ opacity: 0.52; transform: scale(0.92); }}
     50% {{ opacity: 0.95; transform: scale(1.12); }}
   }}
-  @keyframes waveTravel {{
-    from {{ stroke-dashoffset: 260; }}
-    to {{ stroke-dashoffset: -620; }}
+  @keyframes waveScroll {{
+    from {{ transform: translateX(0); }}
+    to {{ transform: translateX(-{signal_loop_width}px); }}
+  }}
+  @keyframes signalSweep {{
+    0% {{ transform: translateX(0); opacity: 0; }}
+    10% {{ opacity: 0.44; }}
+    70% {{ opacity: 0.4; }}
+    100% {{ transform: translateX({signal_view_width + signal_beam_width * 2}px); opacity: 0; }}
   }}
   @keyframes borderPulse {{
     0%, 100% {{ opacity: 0.56; }}
@@ -501,7 +595,8 @@ def build_nameplate_svg(destination: Path) -> None:
     .glitch-b,
     .glitch-c,
     .tagline,
-    .wave-pulse,
+    .wave-stream,
+    .signal-sweep,
     .panel-border,
     .scanlines {{
       animation: none !important;
@@ -515,6 +610,10 @@ def build_nameplate_svg(destination: Path) -> None:
     .title-glow {{
       opacity: 0.5 !important;
     }}
+    .signal-beam,
+    .wave-focus {{
+      opacity: 0 !important;
+    }}
   }}
 </style>
 <rect width="{NAMEPLATE_WIDTH}" height="{NAMEPLATE_HEIGHT}" rx="{panel_radius + 8}" fill="transparent"/>
@@ -527,9 +626,24 @@ def build_nameplate_svg(destination: Path) -> None:
   {trace_nodes_markup}
   <path d="M{tagline_capsule_x - 54} {descriptor_divider_y} H{tagline_capsule_x - 18}" stroke="{hex_color(COLORS["teal"])}" stroke-opacity="0.32"/>
   <path d="M{tagline_capsule_x + tagline_capsule_width + 18} {descriptor_divider_y} H{tagline_capsule_x + tagline_capsule_width + 54}" stroke="{hex_color(COLORS["cyan"])}" stroke-opacity="0.32"/>
-  <use href="#eegWave" class="wave-base"/>
-  <use href="#eegWave" class="wave-glow"/>
-  <use href="#eegWave" class="wave-pulse"/>
+  <g clip-path="url(#signalClip)">
+    <path d="M{signal_view_x} {signal_view_y + signal_baseline} H{signal_view_x + signal_view_width}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.2"/>
+    <g class="signal-sweep signal-beam">
+      <rect x="{signal_view_x - signal_beam_width}" y="{signal_view_y}" width="{signal_beam_width}" height="{signal_view_height}" fill="url(#signalBeamGradient)"/>
+    </g>
+    <g class="wave-stream">
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-base"/>
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-glow"/>
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-core"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-base"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-glow"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-core"/>
+    </g>
+    <g class="wave-stream" mask="url(#signalFocusMask)">
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-focus"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-focus"/>
+    </g>
+  </g>
   <rect x="{tagline_capsule_x}" y="{tagline_capsule_y}" width="{tagline_capsule_width}" height="{tagline_capsule_height}" rx="17" fill="#0D1F2F" fill-opacity="0.72" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.55"/>
   <use href="#titlePixels" x="0" y="{title_shadow_y}" fill="#06101A" opacity="0.84"/>
   <use href="#titlePixels" fill="url(#titleFill)"/>
