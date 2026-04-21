@@ -99,23 +99,6 @@
     stroke-opacity: 0.026;
     stroke-width: 1;
   }
-  .trace-path {
-    fill: none;
-    stroke: url(#panelBorder);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    opacity: 0.46;
-    filter: url(#softGlow);
-  }
-  .trace-node {
-    fill: #6EE7F9;
-    opacity: 0.88;
-    filter: url(#titleGlow);
-    transform-origin: center;
-    transform-box: fill-box;
-    animation: nodePulse 2.8s ease-in-out infinite;
-  }
   .title-glow {
     opacity: 0.58;
     animation: glowPulse 3.2s ease-in-out infinite;
@@ -242,10 +225,6 @@
     0%, 100% { opacity: 0.84; }
     50% { opacity: 1; }
   }
-  @keyframes nodePulse {
-    0%, 100% { opacity: 0.52; transform: scale(0.92); }
-    50% { opacity: 0.95; transform: scale(1.12); }
-  }
   @keyframes waveScroll {
     from { transform: translateX(0); }
     to { transform: translateX(-1800px); }
@@ -266,7 +245,6 @@
     52% { opacity: 0.36; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .trace-node,
     .title-glow,
     .ignite,
     .scan-beam,
@@ -301,8 +279,6 @@
   <line x1="102" y1="34" x2="102" y2="326" class="grid"/><line x1="210" y1="34" x2="210" y2="326" class="grid"/><line x1="318" y1="34" x2="318" y2="326" class="grid"/><line x1="426" y1="34" x2="426" y2="326" class="grid"/><line x1="534" y1="34" x2="534" y2="326" class="grid"/><line x1="642" y1="34" x2="642" y2="326" class="grid"/><line x1="750" y1="34" x2="750" y2="326" class="grid"/><line x1="858" y1="34" x2="858" y2="326" class="grid"/><line x1="966" y1="34" x2="966" y2="326" class="grid"/><line x1="1074" y1="34" x2="1074" y2="326" class="grid"/><line x1="38" y1="60" x2="1162" y2="60" class="grid"/><line x1="38" y1="138" x2="1162" y2="138" class="grid"/><line x1="38" y1="216" x2="1162" y2="216" class="grid"/><line x1="38" y1="294" x2="1162" y2="294" class="grid"/>
   <g class="scanlines"><line x1="30" y1="30" x2="1170" y2="30" class="scanline"/><line x1="30" y1="36" x2="1170" y2="36" class="scanline"/><line x1="30" y1="42" x2="1170" y2="42" class="scanline"/><line x1="30" y1="48" x2="1170" y2="48" class="scanline"/><line x1="30" y1="54" x2="1170" y2="54" class="scanline"/><line x1="30" y1="60" x2="1170" y2="60" class="scanline"/><line x1="30" y1="66" x2="1170" y2="66" class="scanline"/><line x1="30" y1="72" x2="1170" y2="72" class="scanline"/><line x1="30" y1="78" x2="1170" y2="78" class="scanline"/><line x1="30" y1="84" x2="1170" y2="84" class="scanline"/><line x1="30" y1="90" x2="1170" y2="90" class="scanline"/><line x1="30" y1="96" x2="1170" y2="96" class="scanline"/><line x1="30" y1="102" x2="1170" y2="102" class="scanline"/><line x1="30" y1="108" x2="1170" y2="108" class="scanline"/><line x1="30" y1="114" x2="1170" y2="114" class="scanline"/><line x1="30" y1="120" x2="1170" y2="120" class="scanline"/><line x1="30" y1="126" x2="1170" y2="126" class="scanline"/><line x1="30" y1="132" x2="1170" y2="132" class="scanline"/><line x1="30" y1="138" x2="1170" y2="138" class="scanline"/><line x1="30" y1="144" x2="1170" y2="144" class="scanline"/><line x1="30" y1="150" x2="1170" y2="150" class="scanline"/><line x1="30" y1="156" x2="1170" y2="156" class="scanline"/><line x1="30" y1="162" x2="1170" y2="162" class="scanline"/><line x1="30" y1="168" x2="1170" y2="168" class="scanline"/><line x1="30" y1="174" x2="1170" y2="174" class="scanline"/><line x1="30" y1="180" x2="1170" y2="180" class="scanline"/><line x1="30" y1="186" x2="1170" y2="186" class="scanline"/><line x1="30" y1="192" x2="1170" y2="192" class="scanline"/><line x1="30" y1="198" x2="1170" y2="198" class="scanline"/><line x1="30" y1="204" x2="1170" y2="204" class="scanline"/><line x1="30" y1="210" x2="1170" y2="210" class="scanline"/><line x1="30" y1="216" x2="1170" y2="216" class="scanline"/><line x1="30" y1="222" x2="1170" y2="222" class="scanline"/><line x1="30" y1="228" x2="1170" y2="228" class="scanline"/><line x1="30" y1="234" x2="1170" y2="234" class="scanline"/><line x1="30" y1="240" x2="1170" y2="240" class="scanline"/><line x1="30" y1="246" x2="1170" y2="246" class="scanline"/><line x1="30" y1="252" x2="1170" y2="252" class="scanline"/><line x1="30" y1="258" x2="1170" y2="258" class="scanline"/><line x1="30" y1="264" x2="1170" y2="264" class="scanline"/><line x1="30" y1="270" x2="1170" y2="270" class="scanline"/><line x1="30" y1="276" x2="1170" y2="276" class="scanline"/><line x1="30" y1="282" x2="1170" y2="282" class="scanline"/><line x1="30" y1="288" x2="1170" y2="288" class="scanline"/><line x1="30" y1="294" x2="1170" y2="294" class="scanline"/><line x1="30" y1="300" x2="1170" y2="300" class="scanline"/><line x1="30" y1="306" x2="1170" y2="306" class="scanline"/><line x1="30" y1="312" x2="1170" y2="312" class="scanline"/><line x1="30" y1="318" x2="1170" y2="318" class="scanline"/><line x1="30" y1="324" x2="1170" y2="324" class="scanline"/><line x1="30" y1="330" x2="1170" y2="330" class="scanline"/></g>
   <path d="M25 258 H1175" stroke="#183F56" stroke-opacity="0.22"/>
-  <path d="M86 228 L144 228 L174 244 L228 244" class="trace-path"/><path d="M94 270 L152 270 L186 286 L236 286" class="trace-path"/><path d="M1114 228 L1056 228 L1026 244 L972 244" class="trace-path"/><path d="M1106 270 L1048 270 L1014 286 L964 286" class="trace-path"/>
-  <circle cx="86" cy="228" r="4.2" class="trace-node"/><circle cx="174" cy="244" r="4.2" class="trace-node"/><circle cx="152" cy="270" r="4.2" class="trace-node"/><circle cx="186" cy="286" r="4.2" class="trace-node"/><circle cx="1114" cy="228" r="4.2" class="trace-node"/><circle cx="1026" cy="244" r="4.2" class="trace-node"/><circle cx="1048" cy="270" r="4.2" class="trace-node"/><circle cx="1014" cy="286" r="4.2" class="trace-node"/>
   <path d="M300 258 H336" stroke="#58C7B1" stroke-opacity="0.32"/>
   <path d="M864 258 H900" stroke="#6EE7F9" stroke-opacity="0.32"/>
   <g clip-path="url(#signalClip)">

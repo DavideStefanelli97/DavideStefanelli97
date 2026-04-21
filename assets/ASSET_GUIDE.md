@@ -15,13 +15,13 @@ This README now uses an SVG nameplate plus an MRI-led dashboard assembled direct
 - `freesurfer-panel.gif`
   Optimized display derivative for the secondary FreeSurfer panel in the README hero.
 - `signal-divider.gif`
-  Reusable divider used between major README sections.
+  Reusable hero EEG divider used between major README sections.
 - `signal-divider-eeg-alpha.gif`
-  Optional divider variant with a smoother alpha-rhythm style EEG trace.
+  Optional alternate-seed variant using the same hero EEG divider renderer.
 - `signal-divider-eeg-clinical.gif`
-  Optional divider variant with stacked multi-trace clinical EEG styling.
+  Optional alternate-seed variant using the same hero EEG divider renderer.
 - `signal-divider-eeg-evoked.gif`
-  Optional divider variant with evoked-response style spikes and event markers.
+  Optional alternate-seed variant using the same hero EEG divider renderer.
 - `console-band.svg`
   Static SVG band summarizing the main technical directions of the profile.
 
@@ -66,5 +66,5 @@ The GIF pipeline uses Pillow; the SVG nameplate is emitted with Python string ge
 
 - The hero is now built directly in `README.md` using a generated SVG nameplate plus HTML tables and generated panel GIFs.
 - `scripts/generate_assets.py` now emits the top SVG nameplate alongside the reusable support GIF assets and optimized panel derivatives.
-- Multiple EEG-style divider variants are generated so the README can switch visual tone without reworking the page structure.
+- The divider variants now share the same animated hero EEG renderer so older alpha/clinical/evoked divider animations do not linger in the asset set.
 - If the MRI panel still feels too heavy on the live profile page, reduce the frame count or panel width in the generator rather than swapping out the approved source asset.

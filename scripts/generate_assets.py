@@ -5,7 +5,7 @@ from math import exp, pi, sin
 from pathlib import Path
 from random import Random
 
-from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageSequence
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps, ImageSequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +15,8 @@ BRAIN_DIR = ASSETS_DIR / "brain-candidates"
 DIVIDER_WIDTH = 1200
 DIVIDER_HEIGHT = 72
 DIVIDER_FRAMES = 16
+DIVIDER_EEG_LOOP_WIDTH = 1800
+DIVIDER_EEG_STEP = 3
 NAMEPLATE_WIDTH = 1200
 NAMEPLATE_HEIGHT = 360
 NAMEPLATE_TITLE = "Davide Stefanelli"
@@ -306,15 +308,6 @@ def build_nameplate_svg(destination: Path) -> None:
     eeg_path = series_to_path(eeg_series, x_start=0, x_step=signal_sample_step, baseline=signal_baseline)
     signal_beam_width = 208
 
-    left_trace_paths = [
-        [(86, 228), (144, 228), (174, 244), (228, 244)],
-        [(94, 270), (152, 270), (186, 286), (236, 286)],
-    ]
-    right_trace_paths = [mirror_points(path, NAMEPLATE_WIDTH) for path in left_trace_paths]
-
-    left_nodes = [(86, 228), (174, 244), (152, 270), (186, 286)]
-    right_nodes = mirror_points(left_nodes, NAMEPLATE_WIDTH)
-
     grid_lines = []
     for x in range(panel_x + 78, panel_x + panel_width - 20, 108):
         grid_lines.append(
@@ -330,13 +323,6 @@ def build_nameplate_svg(destination: Path) -> None:
         scanlines.append(
             f'<line x1="{panel_x + 6}" y1="{y}" x2="{panel_x + panel_width - 6}" y2="{y}" class="scanline"/>'
         )
-
-    trace_paths_markup = "".join(
-        f'<path d="{points_to_path(path)}" class="trace-path"/>' for path in left_trace_paths + right_trace_paths
-    )
-    trace_nodes_markup = "".join(
-        f'<circle cx="{x}" cy="{y}" r="4.2" class="trace-node"/>' for x, y in left_nodes + right_nodes
-    )
 
     title_shadow_y = 4
     tagline_y = 198
@@ -448,23 +434,6 @@ def build_nameplate_svg(destination: Path) -> None:
     stroke: #FFFFFF;
     stroke-opacity: 0.026;
     stroke-width: 1;
-  }}
-  .trace-path {{
-    fill: none;
-    stroke: url(#panelBorder);
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    opacity: 0.46;
-    filter: url(#softGlow);
-  }}
-  .trace-node {{
-    fill: {hex_color(COLORS["cyan"])};
-    opacity: 0.88;
-    filter: url(#titleGlow);
-    transform-origin: center;
-    transform-box: fill-box;
-    animation: nodePulse 2.8s ease-in-out infinite;
   }}
   .title-glow {{
     opacity: 0.58;
@@ -592,10 +561,6 @@ def build_nameplate_svg(destination: Path) -> None:
     0%, 100% {{ opacity: 0.84; }}
     50% {{ opacity: 1; }}
   }}
-  @keyframes nodePulse {{
-    0%, 100% {{ opacity: 0.52; transform: scale(0.92); }}
-    50% {{ opacity: 0.95; transform: scale(1.12); }}
-  }}
   @keyframes waveScroll {{
     from {{ transform: translateX(0); }}
     to {{ transform: translateX(-{signal_loop_width}px); }}
@@ -616,7 +581,6 @@ def build_nameplate_svg(destination: Path) -> None:
     52% {{ opacity: 0.36; }}
   }}
   @media (prefers-reduced-motion: reduce) {{
-    .trace-node,
     .title-glow,
     .ignite,
     .scan-beam,
@@ -651,8 +615,6 @@ def build_nameplate_svg(destination: Path) -> None:
   {''.join(grid_lines)}
   <g class="scanlines">{''.join(scanlines)}</g>
   <path d="M{panel_x + 1} {descriptor_divider_y} H{panel_x + panel_width - 1}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.22"/>
-  {trace_paths_markup}
-  {trace_nodes_markup}
   <path d="M{tagline_capsule_x - 54} {descriptor_divider_y} H{tagline_capsule_x - 18}" stroke="{hex_color(COLORS["teal"])}" stroke-opacity="0.32"/>
   <path d="M{tagline_capsule_x + tagline_capsule_width + 18} {descriptor_divider_y} H{tagline_capsule_x + tagline_capsule_width + 54}" stroke="{hex_color(COLORS["cyan"])}" stroke-opacity="0.32"/>
   <g clip-path="url(#signalClip)">
@@ -736,6 +698,31 @@ def draw_glow_line(
     glow = glow.filter(ImageFilter.GaussianBlur(glow_radius))
     base.alpha_composite(glow)
     ImageDraw.Draw(base).line(points, fill=rgba(color, core_alpha), width=width)
+
+
+def draw_masked_glow_line(
+    base: Image.Image,
+    points: list[tuple[float, float]],
+    color: tuple[int, int, int],
+    mask: Image.Image,
+    *,
+    width: int = 2,
+    glow_radius: int = 6,
+    glow_alpha: int = 90,
+    core_alpha: int = 210,
+) -> None:
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw_glow_line(
+        layer,
+        points,
+        color,
+        width=width,
+        glow_radius=glow_radius,
+        glow_alpha=glow_alpha,
+        core_alpha=core_alpha,
+    )
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+    base.alpha_composite(layer)
 
 
 def draw_glow_rect(
@@ -889,106 +876,124 @@ def build_panel_gif(
     save_gif(destination, rendered, duration_ms)
 
 
-def render_divider_frame(frame_index: int) -> Image.Image:
-    phase = frame_index / DIVIDER_FRAMES
+def close_eeg_loop(series: list[float]) -> list[float]:
+    if len(series) < 2:
+        return series
+    drift = series[-1] - series[0]
+    last_index = len(series) - 1
+    looped = [value - drift * (index / last_index) for index, value in enumerate(series)]
+    looped[-1] = looped[0]
+    return looped
+
+
+def sample_looped_eeg(series: list[float], sample_position: float) -> float:
+    period = len(series) - 1
+    base_index = int(sample_position) % period
+    blend = sample_position - int(sample_position)
+    next_index = (base_index + 1) % period
+    return series[base_index] * (1.0 - blend) + series[next_index] * blend
+
+
+def build_divider_eeg_points(
+    frame_index: int,
+    *,
+    seed: int,
+    amplitude_scale: float = 0.92,
+    y_offset: float = 0.0,
+) -> list[tuple[float, float]]:
+    sample_count = DIVIDER_EEG_LOOP_WIDTH // DIVIDER_EEG_STEP + 1
+    series = close_eeg_loop(build_eeg_series(sample_count, seed=seed))
+    phase = (frame_index % DIVIDER_FRAMES) / DIVIDER_FRAMES
+    stream_offset = phase * DIVIDER_EEG_LOOP_WIDTH
+    baseline = DIVIDER_HEIGHT / 2 + y_offset
+    points: list[tuple[float, float]] = []
+    for x in range(0, DIVIDER_WIDTH + DIVIDER_EEG_STEP, DIVIDER_EEG_STEP):
+        sample_position = ((x + stream_offset) % DIVIDER_EEG_LOOP_WIDTH) / DIVIDER_EEG_STEP
+        value = sample_looped_eeg(series, sample_position)
+        points.append((x, baseline - value * amplitude_scale))
+    return points
+
+
+def build_beam_mask(center_x: float, *, beam_width: int, max_alpha: int) -> Image.Image:
+    mask = Image.new("L", (DIVIDER_WIDTH, DIVIDER_HEIGHT), 0)
+    draw = ImageDraw.Draw(mask)
+    half_width = beam_width / 2
+    left = max(0, int(center_x - half_width) - 2)
+    right = min(DIVIDER_WIDTH, int(center_x + half_width) + 3)
+    for x in range(left, right):
+        distance = abs(x - center_x) / half_width
+        if distance <= 1.0:
+            strength = int(max_alpha * (1.0 - distance) ** 2)
+            draw.line((x, 6, x, DIVIDER_HEIGHT - 6), fill=strength, width=1)
+    return mask.filter(ImageFilter.GaussianBlur(3))
+
+
+def draw_signal_beam(base: Image.Image, mask: Image.Image) -> None:
+    cyan_layer = Image.new("RGBA", base.size, rgba(COLORS["cyan"], 0))
+    cyan_layer.putalpha(mask.point(lambda value: int(value * 0.42)))
+    base.alpha_composite(cyan_layer)
+
+    hot_layer = Image.new("RGBA", base.size, (255, 255, 255, 0))
+    hot_layer.putalpha(mask.point(lambda value: int(value * 0.18)))
+    base.alpha_composite(hot_layer)
+
+
+def render_hero_eeg_divider_frame(
+    frame_index: int,
+    *,
+    seed: int,
+    accent_color: tuple[int, int, int] = COLORS["cyan"],
+) -> Image.Image:
+    phase = (frame_index % DIVIDER_FRAMES) / DIVIDER_FRAMES
     image = vertical_gradient(DIVIDER_WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
-    add_grid(image, 34, x_shift=phase * 10)
+    add_grid(image, 30, x_shift=phase * 22)
 
-    points = []
-    for x in range(0, DIVIDER_WIDTH + 8, 8):
-        y = DIVIDER_HEIGHT / 2 + sin((x / 44.0) - phase * 2 * pi * 1.7) * 7 + sin((x / 13.0) + phase * 2 * pi * 2.8) * 2.2
-        points.append((x, y))
-    draw_glow_line(image, points, COLORS["cyan"], width=2, glow_radius=4, glow_alpha=84, core_alpha=210)
+    draw = ImageDraw.Draw(image)
+    baseline = DIVIDER_HEIGHT / 2
+    draw.line((0, baseline, DIVIDER_WIDTH, baseline), fill=rgba(COLORS["line"], 78), width=1)
+    draw.line((0, 10, DIVIDER_WIDTH, 10), fill=rgba(COLORS["line"], 34), width=1)
+    draw.line((0, DIVIDER_HEIGHT - 10, DIVIDER_WIDTH, DIVIDER_HEIGHT - 10), fill=rgba(COLORS["line"], 34), width=1)
 
-    pulse_x = int(40 + (DIVIDER_WIDTH - 80) * phase)
-    pulse_overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
-    pulse_draw = ImageDraw.Draw(pulse_overlay)
-    pulse_draw.ellipse((pulse_x - 10, 26, pulse_x + 10, 46), outline=rgba(COLORS["teal"], 180), width=2)
-    pulse_overlay = pulse_overlay.filter(ImageFilter.GaussianBlur(2))
-    image.alpha_composite(pulse_overlay)
-    ImageDraw.Draw(image).line((0, DIVIDER_HEIGHT / 2, DIVIDER_WIDTH, DIVIDER_HEIGHT / 2), fill=rgba(COLORS["line"], 80), width=1)
+    trail_points = build_divider_eeg_points(frame_index - 1, seed=seed, amplitude_scale=0.78)
+    draw_glow_line(image, trail_points, COLORS["teal"], width=1, glow_radius=5, glow_alpha=34, core_alpha=74)
 
-    add_scanlines(image, opacity=8)
-    add_noise(image, seed=frame_index * 23 + 3, count=220, opacity=20)
+    points = build_divider_eeg_points(frame_index, seed=seed, amplitude_scale=0.94)
+    draw_glow_line(image, points, accent_color, width=2, glow_radius=7, glow_alpha=118, core_alpha=236)
+    ImageDraw.Draw(image).line(points, fill=(221, 247, 255, 236), width=1)
+
+    beam_center = -120 + (DIVIDER_WIDTH + 240) * phase
+    beam_mask = build_beam_mask(beam_center, beam_width=218, max_alpha=235)
+    draw_signal_beam(image, beam_mask)
+    draw_masked_glow_line(
+        image,
+        points,
+        (255, 255, 255),
+        beam_mask,
+        width=3,
+        glow_radius=7,
+        glow_alpha=170,
+        core_alpha=248,
+    )
+
+    add_scanlines(image, opacity=9)
+    add_noise(image, seed=frame_index * 41 + seed, count=220, opacity=18)
     return image
+
+
+def render_divider_frame(frame_index: int) -> Image.Image:
+    return render_hero_eeg_divider_frame(frame_index, seed=211, accent_color=COLORS["cyan"])
 
 
 def render_eeg_alpha_divider_frame(frame_index: int) -> Image.Image:
-    phase = frame_index / DIVIDER_FRAMES
-    image = vertical_gradient(DIVIDER_WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
-    add_grid(image, 30, x_shift=phase * 12)
-
-    points = []
-    for x in range(0, DIVIDER_WIDTH + 6, 6):
-        envelope = 0.68 + 0.32 * sin((x / 220.0) - phase * 2 * pi * 0.8)
-        signal = sin((x / 20.0) - phase * 2 * pi * 1.55) * 6.4 * envelope
-        signal += sin((x / 8.0) + phase * 2 * pi * 2.1) * 1.2
-        points.append((x, DIVIDER_HEIGHT / 2 + signal))
-
-    draw_glow_line(image, points, COLORS["cyan"], width=2, glow_radius=5, glow_alpha=92, core_alpha=220)
-    ImageDraw.Draw(image).line((0, DIVIDER_HEIGHT / 2, DIVIDER_WIDTH, DIVIDER_HEIGHT / 2), fill=rgba(COLORS["line"], 55), width=1)
-    add_scanlines(image, opacity=8)
-    add_noise(image, seed=frame_index * 31 + 11, count=180, opacity=18)
-    return image
+    return render_hero_eeg_divider_frame(frame_index, seed=263, accent_color=COLORS["cyan"])
 
 
 def render_eeg_clinical_divider_frame(frame_index: int) -> Image.Image:
-    phase = frame_index / DIVIDER_FRAMES
-    image = vertical_gradient(DIVIDER_WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
-    add_grid(image, 32, x_shift=phase * 10)
-    draw = ImageDraw.Draw(image)
-
-    baselines = [18, DIVIDER_HEIGHT / 2, DIVIDER_HEIGHT - 18]
-    configs = [
-        (COLORS["teal"], 10.5, 0.0, 0.7),
-        (COLORS["cyan"], 13.5, 0.9, 1.0),
-        (COLORS["teal"], 8.5, 1.7, 0.55),
-    ]
-    for baseline, (color, period, offset, amp) in zip(baselines, configs):
-        points = []
-        for x in range(0, DIVIDER_WIDTH + 8, 8):
-            signal = sin((x / (period * 2.0)) - phase * 2 * pi * 1.4 + offset) * (4.2 * amp)
-            signal += sin((x / 7.5) + phase * 2 * pi * 2.3 - offset) * (0.9 * amp)
-            spike = 0.0
-            for center in (210, 590, 970):
-                local = ((x - center) / 22.0) + sin(phase * 2 * pi + offset) * 0.3
-                spike += exp(-(local * local)) * (5.3 * amp)
-            points.append((x, baseline + signal - spike))
-        draw_glow_line(image, points, color, width=2, glow_radius=4, glow_alpha=78, core_alpha=195)
-        draw.line((0, baseline, DIVIDER_WIDTH, baseline), fill=rgba(COLORS["line"], 34), width=1)
-
-    add_scanlines(image, opacity=7)
-    add_noise(image, seed=frame_index * 29 + 13, count=180, opacity=16)
-    return image
+    return render_hero_eeg_divider_frame(frame_index, seed=307, accent_color=COLORS["teal"])
 
 
 def render_eeg_evoked_divider_frame(frame_index: int) -> Image.Image:
-    phase = frame_index / DIVIDER_FRAMES
-    image = vertical_gradient(DIVIDER_WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
-    add_grid(image, 28, x_shift=phase * 9)
-    draw = ImageDraw.Draw(image)
-
-    points = []
-    for x in range(0, DIVIDER_WIDTH + 6, 6):
-        baseline = sin((x / 36.0) - phase * 2 * pi * 0.7) * 1.4
-        signal = baseline
-        for center, scale in ((260, 1.0), (600, 0.85), (940, 1.1)):
-            shift = sin(phase * 2 * pi * (1.1 + scale * 0.2)) * 20
-            local = (x - center - shift) / 18.0
-            positive = exp(-((local - 0.55) ** 2)) * 9.5 * scale
-            negative = exp(-((local + 0.28) ** 2)) * 6.8 * scale
-            signal += positive - negative
-        points.append((x, DIVIDER_HEIGHT / 2 - signal))
-
-    draw_glow_line(image, points, COLORS["cyan"], width=2, glow_radius=5, glow_alpha=96, core_alpha=225)
-    for center in (260, 600, 940):
-        x = int(center + sin(phase * 2 * pi * 1.15) * 20)
-        draw.line((x, 10, x, DIVIDER_HEIGHT - 10), fill=rgba(COLORS["teal"], 50), width=1)
-    draw.line((0, DIVIDER_HEIGHT / 2, DIVIDER_WIDTH, DIVIDER_HEIGHT / 2), fill=rgba(COLORS["line"], 42), width=1)
-
-    add_scanlines(image, opacity=8)
-    add_noise(image, seed=frame_index * 37 + 17, count=190, opacity=17)
-    return image
+    return render_hero_eeg_divider_frame(frame_index, seed=359, accent_color=COLORS["cyan"])
 
 
 def save_gif(path: Path, frames: list[Image.Image], duration_ms: int) -> None:

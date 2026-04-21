@@ -73,7 +73,7 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
 </table>
 
 <p align="center">
-  <img src="./assets/signal-divider.gif" alt="Signal divider" width="100%" />
+  <img src="./assets/signal-divider.gif" alt="Animated EEG signal divider" width="100%" />
 </p>
 
 ## Featured Repositories
@@ -170,7 +170,7 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
 </p>
 
 <p align="center">
-  <img src="./assets/signal-divider.gif" alt="Signal divider" width="100%" />
+  <img src="./assets/signal-divider.gif" alt="Animated EEG signal divider" width="100%" />
 </p>
 
 ## GitHub Telemetry
@@ -184,7 +184,7 @@ If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file
 </p>
 
 <p align="center">
-  <img src="./assets/signal-divider.gif" alt="Signal divider" width="100%" />
+  <img src="./assets/signal-divider.gif" alt="Animated EEG signal divider" width="100%" />
 </p>
 
 ## Contact and Links
