@@ -1,220 +1,1050 @@
-"""Build the profile's schematic hero and verified, project-derived previews.
-
-Default: regenerate the self-contained SVG and check the committed previews.
-Optional --refresh-evidence: recreate previews from pinned, read-only source
-checkouts. Source files are hashed before use; no network access is performed.
-"""
 from __future__ import annotations
 
-import argparse
-import hashlib
-from math import pi, sin
+from collections import defaultdict
+from math import exp, pi, sin
 from pathlib import Path
+from random import Random
+
+from PIL import Image, ImageChops, ImageDraw, ImageFilter, ImageOps, ImageSequence
+
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSETS = ROOT / "assets"
-NAMEPLATE_FILENAME = "profile-nameplate-clean.svg"
-PREVIEWS = (
-    "work-neuroscope.webp",
-    "work-eeg-pipeline.webp",
-    "work-medical-imaging.webp",
-)
-# Paths are relative to --sources-root. Never write to these checkouts.
-SOURCES = {
-    "topoplot": (
-        "NEURO-SCOPE_public_release/docs/assets/topoplot-window.png",
-        "491b8037cc9ccf9cdfbdee9254d379c87045c751e0a686ed1d7bea2972a4c954",
-    ),
-    "spectrum": (
-        "NEURO-SCOPE_public_release/docs/assets/filter-compare.png",
-        "85b3068b952de773d20c416ed936f26bed1fbd7d6a2d0fc86dee54c8555474a2",
-    ),
-    "wavelets": (
-        "MATLAB-EEG-Processing-Pipeline/outputs/figures/sub-035/stage04/"
-        "01_stage04_subject_tf_focus_channels.png",
-        "769fbf3b5ee5d616a696b4da8c8e5d6358644f4e835855cb6938a9ae8a85e53a",
-    ),
-    "rotation": (
-        "Smart Medical Imaging/results/reg_rotation/metric_trends.jpg",
-        "e551be1b48917a41aeb24cec38e934d43f992e1444ae8f27fdc92310dd68758b",
-    ),
+ASSETS_DIR = ROOT / "assets"
+BRAIN_DIR = ASSETS_DIR / "brain-candidates"
+
+DIVIDER_WIDTH = 1200
+DIVIDER_HEIGHT = 72
+DIVIDER_FRAMES = 16
+DIVIDER_EEG_LOOP_WIDTH = 1800
+DIVIDER_EEG_STEP = 3
+NAMEPLATE_WIDTH = 1200
+NAMEPLATE_HEIGHT = 360
+NAMEPLATE_TITLE = "Davide Stefanelli"
+NAMEPLATE_TAGLINE = "From brain signals to intelligent systems"
+NAMEPLATE_DESCRIPTOR = "AI / Computer Vision / Neuro-engineering / Neuro-imaging / NeuroScience"
+
+COLORS = {
+    "bg_top": (7, 15, 26),
+    "bg_bottom": (11, 27, 41),
+    "panel_top": (9, 18, 30),
+    "panel_bottom": (13, 31, 47),
+    "line": (24, 63, 86),
+    "cyan": (110, 231, 249),
+    "teal": (88, 199, 177),
+}
+
+BITMAP_FONT = {
+    "A": ("01110", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "B": ("11110", "10001", "10001", "11110", "10001", "10001", "11110"),
+    "C": ("01111", "10000", "10000", "10000", "10000", "10000", "01111"),
+    "D": ("11110", "10001", "10001", "10001", "10001", "10001", "11110"),
+    "E": ("11111", "10000", "10000", "11110", "10000", "10000", "11111"),
+    "F": ("11111", "10000", "10000", "11110", "10000", "10000", "10000"),
+    "G": ("01111", "10000", "10000", "10111", "10001", "10001", "01111"),
+    "H": ("10001", "10001", "10001", "11111", "10001", "10001", "10001"),
+    "I": ("11111", "00100", "00100", "00100", "00100", "00100", "11111"),
+    "J": ("00111", "00010", "00010", "00010", "10010", "10010", "01100"),
+    "K": ("10001", "10010", "10100", "11000", "10100", "10010", "10001"),
+    "L": ("10000", "10000", "10000", "10000", "10000", "10000", "11111"),
+    "M": ("10001", "11011", "10101", "10101", "10001", "10001", "10001"),
+    "N": ("10001", "11001", "10101", "10011", "10001", "10001", "10001"),
+    "O": ("01110", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "P": ("11110", "10001", "10001", "11110", "10000", "10000", "10000"),
+    "Q": ("01110", "10001", "10001", "10001", "10101", "10010", "01101"),
+    "R": ("11110", "10001", "10001", "11110", "10100", "10010", "10001"),
+    "S": ("01111", "10000", "10000", "01110", "00001", "00001", "11110"),
+    "T": ("11111", "00100", "00100", "00100", "00100", "00100", "00100"),
+    "U": ("10001", "10001", "10001", "10001", "10001", "10001", "01110"),
+    "V": ("10001", "10001", "10001", "10001", "10001", "01010", "00100"),
+    "W": ("10001", "10001", "10001", "10101", "10101", "10101", "01010"),
+    "X": ("10001", "10001", "01010", "00100", "01010", "10001", "10001"),
+    "Y": ("10001", "10001", "01010", "00100", "00100", "00100", "00100"),
+    "Z": ("11111", "00001", "00010", "00100", "01000", "10000", "11111"),
+    "a": ("00000", "00000", "01110", "00001", "01111", "10001", "01111"),
+    "d": ("00001", "00001", "01111", "10001", "10001", "10001", "01111"),
+    "e": ("00000", "00000", "01110", "10001", "11111", "10000", "01110"),
+    "f": ("00110", "01001", "01000", "11100", "01000", "01000", "01000"),
+    "i": ("00100", "00000", "01100", "00100", "00100", "00100", "01110"),
+    "l": ("01100", "00100", "00100", "00100", "00100", "00100", "01110"),
+    "n": ("00000", "00000", "11110", "10001", "10001", "10001", "10001"),
+    "t": ("00100", "00100", "11111", "00100", "00100", "00101", "00010"),
+    "v": ("00000", "00000", "10001", "10001", "10001", "01010", "00100"),
+    " ": ("000", "000", "000", "000", "000", "000", "000"),
 }
 
 
-def signal_path(x0: int, x1: int, baseline: int, phase: float) -> str:
-    """A deliberately synthetic trace: no participant data or measured result."""
-    points = []
-    for x in range(x0, x1 + 1, 2):
-        t = (x - x0) / (x1 - x0)
-        envelope = max(0.0, sin(pi * t)) ** 0.7
-        y = baseline + envelope * (
-            10 * sin(2 * pi * (6.5 * t + phase))
-            + 5 * sin(2 * pi * (13 * t + 0.3))
-            + 7 * sin(2 * pi * (2 * t + phase))
+def format_svg_number(value: float) -> str:
+    rounded = round(value, 2)
+    if abs(rounded - int(rounded)) < 0.01:
+        return str(int(rounded))
+    return f"{rounded:.2f}".rstrip("0").rstrip(".")
+
+
+def hex_color(color: tuple[int, int, int]) -> str:
+    return f"#{color[0]:02X}{color[1]:02X}{color[2]:02X}"
+
+
+def points_to_path(points: list[tuple[float, float]]) -> str:
+    if not points:
+        raise ValueError("Cannot build a path without points")
+    start_x, start_y = points[0]
+    segments = [f"M{format_svg_number(start_x)} {format_svg_number(start_y)}"]
+    segments.extend(f"L{format_svg_number(x)} {format_svg_number(y)}" for x, y in points[1:])
+    return " ".join(segments)
+
+
+def mirror_points(points: list[tuple[float, float]], width: float) -> list[tuple[float, float]]:
+    return [(width - x, y) for x, y in points]
+
+
+def bitmap_text_columns(text: str, *, gap: int = 1) -> int:
+    total = 0
+    for index, char in enumerate(text):
+        if char not in BITMAP_FONT:
+            raise ValueError(f"Unsupported bitmap glyph: {char!r}")
+        total += len(BITMAP_FONT[char][0])
+        if index < len(text) - 1:
+            total += gap
+    return total
+
+
+def build_bitmap_pixels(
+    text: str,
+    *,
+    origin_x: int,
+    origin_y: int,
+    cell: int,
+    gap: int = 1,
+) -> tuple[list[tuple[int, int, int]], int, int]:
+    pixels: list[tuple[int, int, int]] = []
+    cursor = 0
+    for index, char in enumerate(text):
+        glyph = BITMAP_FONT[char]
+        glyph_width = len(glyph[0])
+        for row_index, row in enumerate(glyph):
+            for col_index, bit in enumerate(row):
+                if bit != "1":
+                    continue
+                global_column = cursor + col_index
+                pixels.append((origin_x + global_column * cell, origin_y + row_index * cell, global_column))
+        cursor += glyph_width
+        if index < len(text) - 1:
+            cursor += gap
+    return pixels, cursor, len(next(iter(BITMAP_FONT.values()))) * cell
+
+
+def pixel_rect_markup(x: int, y: int, *, cell: int, inset: float) -> str:
+    size = cell - inset * 2
+    radius = max(size * 0.18, 1.2)
+    return (
+        f'<rect x="{format_svg_number(x + inset)}" y="{format_svg_number(y + inset)}" '
+        f'width="{format_svg_number(size)}" height="{format_svg_number(size)}" '
+        f'rx="{format_svg_number(radius)}"/>'
+    )
+
+
+def build_bitmap_group_markup(pixels: list[tuple[int, int, int]], *, cell: int, inset: float) -> str:
+    return "".join(pixel_rect_markup(x, y, cell=cell, inset=inset) for x, y, _ in pixels)
+
+
+def build_ignition_groups_markup(
+    pixels: list[tuple[int, int, int]],
+    *,
+    cell: int,
+    inset: float,
+    total_columns: int,
+) -> str:
+    columns: dict[int, list[str]] = defaultdict(list)
+    for x, y, column in pixels:
+        columns[column].append(pixel_rect_markup(x, y, cell=cell, inset=inset))
+
+    groups = []
+    for column in sorted(columns):
+        delay = (column / max(total_columns - 1, 1)) * 1.05
+        groups.append(
+            f'<g class="ignite" style="animation-delay:{delay:.3f}s">{"".join(columns[column])}</g>'
         )
-        points.append(f"{'M' if not points else 'L'}{x},{y:.2f}")
-    return " ".join(points)
+    return "".join(groups)
 
 
-def hero_svg() -> str:
-    grid = "".join(
-        f'<path d="M{x} 88V248" />' for x in range(64, 1153, 32)
-    ) + "".join(
-        f'<path d="M48 {y}H1152" />' for y in range(88, 249, 32)
+def build_noise_track(sample_count: int, *, rng: Random, anchor_step: int, amplitude: float) -> list[float]:
+    anchor_count = (sample_count - 1) // anchor_step + 3
+    anchors = [rng.uniform(-1.0, 1.0) for _ in range(anchor_count)]
+    values: list[float] = []
+    for index in range(sample_count):
+        anchor_index = index // anchor_step
+        blend = (index % anchor_step) / anchor_step
+        smooth = blend * blend * (3.0 - 2.0 * blend)
+        left = anchors[anchor_index]
+        right = anchors[anchor_index + 1]
+        values.append(((1.0 - smooth) * left + smooth * right) * amplitude)
+    return values
+
+
+def inject_mixed_waking_transients(series: list[float], *, seed: int) -> None:
+    rng = Random(seed)
+    zones = (
+        (0.08, 0.11),
+        (0.2, 0.27),
+        (0.38, 0.44),
+        (0.56, 0.63),
+        (0.74, 0.81),
+        (0.87, 0.92),
     )
-    clusters = [
-        ([(426, 134), (448, 112), (466, 145), (442, 164), (482, 124)], "#6EE7F9"),
-        ([(545, 191), (564, 211), (587, 179), (610, 204), (575, 231)], "#58C7B1"),
-        ([(633, 102), (653, 127), (674, 91), (693, 118), (670, 151)], "#D5E7F4"),
-    ]
-    points = []
-    for coordinates, colour in clusters:
-        for i, (x, y) in enumerate(coordinates):
-            nx, ny = coordinates[(i + 1) % len(coordinates)]
-            points.append(
-                f'<path d="M{x} {y}L{nx} {ny}" stroke="{colour}" opacity=".23" />'
-                f'<circle cx="{x}" cy="{y}" r="4" fill="{colour}" />'
-            )
-    signals = "\n".join(
-        f'<path d="{signal_path(x0, x1, y, phase)}" stroke="{colour}" />'
-        for x0, x1, y, phase, colour in [
-            (740, 996, 126, 0.1, "#D5E7F4"),
-            (724, 1010, 169, 0.45, "#6EE7F9"),
-            (740, 996, 212, 0.8, "#58C7B1"),
-        ]
+    last_index = len(series) - 1
+    for low, high in zones:
+        center = int(rng.uniform(low, high) * last_index)
+        polarity = 1.0 if rng.random() > 0.34 else -1.0
+        sharp_amp = rng.uniform(8.8, 12.8)
+        lead_amp = sharp_amp * rng.uniform(0.12, 0.2)
+        slow_amp = sharp_amp * rng.uniform(0.34, 0.46)
+        settle_amp = sharp_amp * rng.uniform(0.12, 0.22)
+        ripple_amp = sharp_amp * rng.uniform(0.08, 0.14)
+        for index in range(max(0, center - 34), min(len(series), center + 56)):
+            dx = index - center
+            series[index] -= polarity * lead_amp * exp(-((dx + 8.5) / 5.8) ** 2)
+            series[index] += polarity * sharp_amp * exp(-(dx / 1.75) ** 2)
+            series[index] -= polarity * slow_amp * exp(-((dx - 5.5) / 4.2) ** 2)
+            series[index] += polarity * settle_amp * exp(-((dx - 16.0) / 7.0) ** 2)
+            series[index] += polarity * ripple_amp * exp(-((dx - 6.5) / 12.5) ** 2) * sin((dx - 6.5) * 0.9)
+
+
+def build_eeg_series(sample_count: int, *, seed: int) -> list[float]:
+    rng = Random(seed)
+    phases = [rng.random() * 2 * pi for _ in range(10)]
+    slow_noise = build_noise_track(sample_count, rng=rng, anchor_step=44, amplitude=0.62)
+    contour_noise = build_noise_track(sample_count, rng=rng, anchor_step=15, amplitude=0.34)
+    micro_noise = build_noise_track(sample_count, rng=rng, anchor_step=6, amplitude=0.14)
+    series: list[float] = []
+    last_index = max(sample_count - 1, 1)
+    for index in range(sample_count):
+        t = index / last_index
+        drift = 0.82 * sin(2 * pi * 1.2 * t + phases[0])
+        drift += 0.46 * sin(2 * pi * 2.6 * t + phases[1])
+        drift += 0.2 * slow_noise[index]
+
+        alpha_envelope = 0.76 + 0.24 * sin(2 * pi * 1.6 * t + phases[2])
+        alpha_envelope += 0.12 * sin(2 * pi * 3.8 * t + phases[3])
+        alpha_envelope += 0.08 * slow_noise[index]
+        alpha = alpha_envelope * 1.95 * sin(2 * pi * 18.5 * t + phases[4] + contour_noise[index] * 0.75)
+
+        beta_envelope = 0.34 + 0.14 * sin(2 * pi * 2.9 * t + phases[5])
+        beta = beta_envelope * 1.18 * sin(2 * pi * 34.0 * t + phases[6] + contour_noise[index] * 1.05)
+
+        texture = 0.38 * sin(2 * pi * 51.0 * t + phases[7] + micro_noise[index] * 1.8)
+        texture += 0.22 * sin(2 * pi * 63.0 * t + phases[8])
+        texture += micro_noise[index]
+
+        series.append(drift + alpha + beta + texture + contour_noise[index] * 0.55)
+
+    burst_specs = (
+        (0.15, 20.0, 1.35, 0.9),
+        (0.43, 24.0, 1.18, 0.72),
+        (0.69, 18.0, 1.08, 0.84),
+        (0.83, 15.0, 0.94, 0.94),
     )
-    contours = "".join(
-        f'<ellipse cx="1089" cy="161" rx="{r}" ry="{r * 0.62:.1f}" '
-        f'transform="rotate(-24 1089 161)" />'
-        for r in [13, 24, 35, 46, 57, 68]
+    for center_ratio, width, amplitude, frequency in burst_specs:
+        center = center_ratio * last_index
+        for index in range(sample_count):
+            dx = index - center
+            envelope = exp(-((dx / width) ** 2))
+            phase = (dx / width) * 2 * pi * frequency
+            series[index] += envelope * amplitude * sin(phase)
+
+    inject_mixed_waking_transients(series, seed=seed + 17)
+
+    mean = sum(series) / len(series)
+    centered = [value - mean for value in series]
+    peak = max(abs(value) for value in centered) or 1.0
+    scale = 18.8 / peak
+    return [value * scale for value in centered]
+
+
+def series_to_path(series: list[float], *, x_start: float, x_step: float, baseline: float) -> str:
+    points = [(x_start + index * x_step, baseline - value) for index, value in enumerate(series)]
+    return points_to_path(points)
+
+
+def build_nameplate_svg(destination: Path) -> None:
+    panel_x = 24
+    panel_y = 20
+    panel_width = NAMEPLATE_WIDTH - panel_x * 2
+    panel_height = NAMEPLATE_HEIGHT - panel_y * 2
+    panel_radius = 28
+
+    cell = 10
+    pixel_inset = 0.9
+    total_columns = bitmap_text_columns(NAMEPLATE_TITLE, gap=1)
+    title_x = (NAMEPLATE_WIDTH - total_columns * cell) // 2
+    title_y = 72
+    title_pixels, _, title_height = build_bitmap_pixels(
+        NAMEPLATE_TITLE,
+        origin_x=title_x,
+        origin_y=title_y,
+        cell=cell,
+        gap=1,
     )
-    electrodes = "".join(
-        f'<circle cx="{x}" cy="{y}" r="2.3" />'
-        for x, y in [
-            (1054, 127), (1081, 117), (1108, 127), (1037, 165),
-            (1081, 169), (1125, 165), (1054, 205), (1081, 219), (1108, 205),
-        ]
+    title_width = total_columns * cell
+    title_right = title_x + title_width
+    title_bottom = title_y + title_height
+
+    title_markup = build_bitmap_group_markup(title_pixels, cell=cell, inset=pixel_inset)
+    ignition_markup = build_ignition_groups_markup(
+        title_pixels,
+        cell=cell,
+        inset=pixel_inset,
+        total_columns=total_columns,
     )
-    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
-  <title id="title">Davide Stefanelli — research engineering across visual and neural data</title>
-  <desc id="desc">An original schematic, not an experimental result. A visual crop connects to embedding neighbourhoods and then to EEG traces and a scalp contour. A single pulse travels along this path for 4.5 seconds, then stops. All information remains visible without motion.</desc>
-  <style>
-    text {{ font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace; }}
-    @media (prefers-reduced-motion: reduce) {{ .motion {{ display: none; }} }}
-    @media (max-width: 600px) {{ text {{ font-size: 32px; letter-spacing: 1px; }} .micro {{ display: none; }} }}
-  </style>
-  <defs>
-    <clipPath id="scalp"><circle cx="1081" cy="169" r="67" /></clipPath>
-  </defs>
-  <rect x="1" y="1" width="1198" height="318" rx="16" fill="#0B1320" stroke="#263D50" stroke-width="2" />
-  <g stroke="#243C50" stroke-width="1" opacity=".35" fill="none">{grid}</g>
-  <path d="M32 55H1168M32 274H1168" stroke="#263D50" />
-  <g font-size="18" fill="#D5E7F4" letter-spacing="1.8">
-    <text x="48" y="35">DS / RESEARCH ENGINEERING</text>
-    <text class="micro" x="1152" y="35" text-anchor="end" fill="#8FAABD">BUILD · EVALUATE · REPRODUCE</text>
+
+    signal_view_x = title_x - 34
+    signal_view_y = 264
+    signal_view_width = title_width + 68
+    signal_view_height = 58
+    signal_baseline = 30
+    signal_loop_width = 1800
+    signal_sample_step = 3
+    signal_sample_count = signal_loop_width // signal_sample_step + 1
+    eeg_series = build_eeg_series(signal_sample_count, seed=211)
+    eeg_path = series_to_path(eeg_series, x_start=0, x_step=signal_sample_step, baseline=signal_baseline)
+    signal_beam_width = 208
+
+    grid_lines = []
+    for x in range(panel_x + 78, panel_x + panel_width - 20, 108):
+        grid_lines.append(
+            f'<line x1="{x}" y1="{panel_y + 14}" x2="{x}" y2="{panel_y + panel_height - 14}" class="grid"/>'
+        )
+    for y in range(panel_y + 40, panel_y + panel_height - 24, 78):
+        grid_lines.append(
+            f'<line x1="{panel_x + 14}" y1="{y}" x2="{panel_x + panel_width - 14}" y2="{y}" class="grid"/>'
+        )
+
+    scanlines = []
+    for y in range(panel_y + 10, panel_y + panel_height - 4, 6):
+        scanlines.append(
+            f'<line x1="{panel_x + 6}" y1="{y}" x2="{panel_x + panel_width - 6}" y2="{y}" class="scanline"/>'
+        )
+
+    title_shadow_y = 4
+    tagline_y = 198
+    descriptor_y = 236
+    tagline_capsule_width = 492
+    tagline_capsule_height = 36
+    tagline_capsule_x = (NAMEPLATE_WIDTH - tagline_capsule_width) // 2
+    tagline_capsule_y = tagline_y - 24
+    descriptor_divider_y = descriptor_y + 22
+    nameplate_desc = f"{NAMEPLATE_TAGLINE}. {NAMEPLATE_DESCRIPTOR}"
+
+    svg = f"""<svg width="{NAMEPLATE_WIDTH}" height="{NAMEPLATE_HEIGHT}" viewBox="0 0 {NAMEPLATE_WIDTH} {NAMEPLATE_HEIGHT}" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="hero-title hero-desc">
+<title id="hero-title">{NAMEPLATE_TITLE}</title>
+<desc id="hero-desc">{nameplate_desc}</desc>
+<defs>
+  <linearGradient id="panelBg" x1="0" y1="{panel_y}" x2="0" y2="{panel_y + panel_height}" gradientUnits="userSpaceOnUse">
+    <stop stop-color="{hex_color(COLORS["bg_top"])}"/>
+    <stop offset="1" stop-color="{hex_color(COLORS["bg_bottom"])}"/>
+  </linearGradient>
+  <linearGradient id="panelBorder" x1="{panel_x}" y1="{panel_y}" x2="{panel_x + panel_width}" y2="{panel_y + panel_height}" gradientUnits="userSpaceOnUse">
+    <stop stop-color="{hex_color(COLORS["cyan"])}" stop-opacity="0.86"/>
+    <stop offset="1" stop-color="{hex_color(COLORS["teal"])}" stop-opacity="0.76"/>
+  </linearGradient>
+  <linearGradient id="titleFill" x1="{title_x}" y1="{title_y}" x2="{title_right}" y2="{title_bottom}" gradientUnits="userSpaceOnUse">
+    <stop stop-color="{hex_color(COLORS["cyan"])}"/>
+    <stop offset="0.52" stop-color="#D5E7F4"/>
+    <stop offset="1" stop-color="{hex_color(COLORS["teal"])}"/>
+  </linearGradient>
+  <linearGradient id="taglineFill" x1="{tagline_capsule_x}" y1="{tagline_capsule_y}" x2="{tagline_capsule_x + tagline_capsule_width}" y2="{tagline_capsule_y}" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#D5E7F4"/>
+    <stop offset="1" stop-color="#A7D5E1"/>
+  </linearGradient>
+  <linearGradient id="scanBeamGradient" x1="0" y1="0" x2="180" y2="0" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFFFFF" stop-opacity="0"/>
+    <stop offset="0.35" stop-color="{hex_color(COLORS["cyan"])}" stop-opacity="0.08"/>
+    <stop offset="0.52" stop-color="#FFFFFF" stop-opacity="0.85"/>
+    <stop offset="0.7" stop-color="{hex_color(COLORS["teal"])}" stop-opacity="0.12"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </linearGradient>
+  <filter id="titleGlow" x="-24%" y="-40%" width="148%" height="180%">
+    <feGaussianBlur stdDeviation="7.5" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+  <filter id="softGlow" x="-18%" y="-30%" width="136%" height="160%">
+    <feGaussianBlur stdDeviation="3.4" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+  <filter id="panelGlow" x="-6%" y="-10%" width="112%" height="130%">
+    <feGaussianBlur stdDeviation="6" result="blur"/>
+    <feMerge>
+      <feMergeNode in="blur"/>
+      <feMergeNode in="SourceGraphic"/>
+    </feMerge>
+  </filter>
+  <g id="titlePixels">{title_markup}</g>
+  <clipPath id="panelClip">
+    <rect x="{panel_x}" y="{panel_y}" width="{panel_width}" height="{panel_height}" rx="{panel_radius}"/>
+  </clipPath>
+  <clipPath id="titleClip">
+    <use href="#titlePixels"/>
+  </clipPath>
+  <clipPath id="glitchSliceA">
+    <rect x="{title_x - 8}" y="{title_y + 10}" width="{title_width + 16}" height="16" rx="5"/>
+  </clipPath>
+  <clipPath id="glitchSliceB">
+    <rect x="{title_x - 10}" y="{title_y + 33}" width="{title_width + 20}" height="15" rx="5"/>
+  </clipPath>
+  <clipPath id="glitchSliceC">
+    <rect x="{title_x - 6}" y="{title_y + 54}" width="{title_width + 12}" height="15" rx="5"/>
+  </clipPath>
+  <clipPath id="signalClip">
+    <rect x="{signal_view_x}" y="{signal_view_y}" width="{signal_view_width}" height="{signal_view_height}" rx="16"/>
+  </clipPath>
+  <linearGradient id="signalBeamGradient" x1="0" y1="0" x2="{signal_beam_width}" y2="0" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#FFFFFF" stop-opacity="0"/>
+    <stop offset="0.18" stop-color="{hex_color(COLORS["cyan"])}" stop-opacity="0.14"/>
+    <stop offset="0.48" stop-color="#FFFFFF" stop-opacity="0.48"/>
+    <stop offset="0.72" stop-color="{hex_color(COLORS["teal"])}" stop-opacity="0.2"/>
+    <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="signalFocusGradient" x1="0" y1="0" x2="{signal_beam_width}" y2="0" gradientUnits="userSpaceOnUse">
+    <stop stop-color="#000000" stop-opacity="0"/>
+    <stop offset="0.24" stop-color="#7F7F7F" stop-opacity="0.72"/>
+    <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="1"/>
+    <stop offset="0.76" stop-color="#7F7F7F" stop-opacity="0.72"/>
+    <stop offset="1" stop-color="#000000" stop-opacity="0"/>
+  </linearGradient>
+  <mask id="signalFocusMask" maskUnits="userSpaceOnUse">
+    <rect x="{signal_view_x}" y="{signal_view_y}" width="{signal_view_width}" height="{signal_view_height}" fill="black"/>
+    <g class="signal-sweep">
+      <rect x="{signal_view_x - signal_beam_width}" y="{signal_view_y}" width="{signal_beam_width}" height="{signal_view_height}" fill="url(#signalFocusGradient)"/>
+    </g>
+  </mask>
+  <path id="eegSegment" d="{eeg_path}"/>
+</defs>
+<style>
+  .grid {{
+    stroke: {hex_color(COLORS["line"])};
+    stroke-opacity: 0.12;
+    stroke-width: 1;
+  }}
+  .scanline {{
+    stroke: #FFFFFF;
+    stroke-opacity: 0.026;
+    stroke-width: 1;
+  }}
+  .title-glow {{
+    opacity: 0.58;
+    animation: glowPulse 3.2s ease-in-out infinite;
+  }}
+  .ignite {{
+    opacity: 0;
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: pixelIgnite 0.56s ease-out 1 both;
+  }}
+  .scan-beam {{
+    animation: scanSweep 4.5s linear infinite;
+  }}
+  .glitch-a {{
+    animation: glitchA 8s steps(1, end) infinite;
+  }}
+  .glitch-b {{
+    animation: glitchB 8s steps(1, end) infinite;
+  }}
+  .glitch-c {{
+    animation: glitchC 8s steps(1, end) infinite;
+  }}
+  .tagline {{
+    font-family: Consolas, Monaco, monospace;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.7px;
+    fill: url(#taglineFill);
+    text-anchor: middle;
+    animation: taglinePulse 2.8s ease-in-out infinite;
+  }}
+  .descriptor {{
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.45px;
+    fill: #7AA0B8;
+    text-anchor: middle;
+    opacity: 0.96;
+  }}
+  .wave-stream {{
+    animation: waveScroll 7.2s linear infinite;
+  }}
+  .wave-base {{
+    fill: none;
+    stroke: {hex_color(COLORS["line"])};
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.72;
+  }}
+  .wave-glow {{
+    fill: none;
+    stroke: {hex_color(COLORS["cyan"])};
+    stroke-width: 4.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.42;
+    filter: url(#softGlow);
+  }}
+  .wave-core {{
+    fill: none;
+    stroke: #DDF7FF;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.94;
+  }}
+  .wave-focus {{
+    fill: none;
+    stroke: #FFFFFF;
+    stroke-width: 3.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.98;
+    filter: url(#titleGlow);
+  }}
+  .signal-sweep {{
+    animation: signalSweep 4.8s linear infinite;
+  }}
+  .signal-beam {{
+    opacity: 0.58;
+  }}
+  .panel-border {{
+    animation: borderPulse 6s ease-in-out infinite;
+  }}
+  .scanlines {{
+    animation: scanlineFlicker 3.6s linear infinite;
+  }}
+  @keyframes glowPulse {{
+    0%, 100% {{ opacity: 0.38; }}
+    50% {{ opacity: 0.82; }}
+  }}
+  @keyframes pixelIgnite {{
+    0% {{ opacity: 0; transform: translateY(7px) scale(0.86); }}
+    38% {{ opacity: 1; transform: translateY(0) scale(1.08); }}
+    100% {{ opacity: 0; transform: translateY(0) scale(1); }}
+  }}
+  @keyframes scanSweep {{
+    0% {{ transform: translateX(-360px); opacity: 0; }}
+    12% {{ opacity: 0.75; }}
+    70% {{ opacity: 0.46; }}
+    100% {{ transform: translateX(1320px); opacity: 0; }}
+  }}
+  @keyframes glitchA {{
+    0%, 92%, 100% {{ opacity: 0; transform: translateX(0); }}
+    93% {{ opacity: 0.58; transform: translateX(-12px); }}
+    93.8% {{ opacity: 0.32; transform: translateX(8px); }}
+    94.5% {{ opacity: 0; transform: translateX(0); }}
+  }}
+  @keyframes glitchB {{
+    0%, 92.4%, 100% {{ opacity: 0; transform: translateX(0); }}
+    93.2% {{ opacity: 0.54; transform: translateX(11px); }}
+    94% {{ opacity: 0.22; transform: translateX(-6px); }}
+    94.6% {{ opacity: 0; transform: translateX(0); }}
+  }}
+  @keyframes glitchC {{
+    0%, 91.7%, 100% {{ opacity: 0; transform: translateX(0); }}
+    92.7% {{ opacity: 0.42; transform: translateX(-8px); }}
+    93.5% {{ opacity: 0.26; transform: translateX(5px); }}
+    94.2% {{ opacity: 0; transform: translateX(0); }}
+  }}
+  @keyframes taglinePulse {{
+    0%, 100% {{ opacity: 0.84; }}
+    50% {{ opacity: 1; }}
+  }}
+  @keyframes waveScroll {{
+    from {{ transform: translateX(0); }}
+    to {{ transform: translateX(-{signal_loop_width}px); }}
+  }}
+  @keyframes signalSweep {{
+    0% {{ transform: translateX(0); opacity: 0; }}
+    8% {{ opacity: 0.52; }}
+    62% {{ opacity: 0.48; }}
+    100% {{ transform: translateX({signal_view_width + signal_beam_width * 2}px); opacity: 0; }}
+  }}
+  @keyframes borderPulse {{
+    0%, 100% {{ opacity: 0.56; }}
+    50% {{ opacity: 0.92; }}
+  }}
+  @keyframes scanlineFlicker {{
+    0%, 100% {{ opacity: 0.52; }}
+    48% {{ opacity: 0.68; }}
+    52% {{ opacity: 0.36; }}
+  }}
+  @media (prefers-reduced-motion: reduce) {{
+    .title-glow,
+    .ignite,
+    .scan-beam,
+    .glitch-a,
+    .glitch-b,
+    .glitch-c,
+    .tagline,
+    .wave-stream,
+    .signal-sweep,
+    .panel-border,
+    .scanlines {{
+      animation: none !important;
+    }}
+    .ignite,
+    .glitch-a,
+    .glitch-b,
+    .glitch-c {{
+      opacity: 0 !important;
+    }}
+    .title-glow {{
+      opacity: 0.5 !important;
+    }}
+    .signal-beam,
+    .wave-focus {{
+      opacity: 0 !important;
+    }}
+  }}
+</style>
+<rect width="{NAMEPLATE_WIDTH}" height="{NAMEPLATE_HEIGHT}" rx="{panel_radius + 8}" fill="transparent"/>
+<rect x="{panel_x}" y="{panel_y}" width="{panel_width}" height="{panel_height}" rx="{panel_radius}" fill="url(#panelBg)"/>
+<g clip-path="url(#panelClip)">
+  {''.join(grid_lines)}
+  <g class="scanlines">{''.join(scanlines)}</g>
+  <path d="M{panel_x + 1} {descriptor_divider_y} H{panel_x + panel_width - 1}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.22"/>
+  <path d="M{tagline_capsule_x - 54} {descriptor_divider_y} H{tagline_capsule_x - 18}" stroke="{hex_color(COLORS["teal"])}" stroke-opacity="0.32"/>
+  <path d="M{tagline_capsule_x + tagline_capsule_width + 18} {descriptor_divider_y} H{tagline_capsule_x + tagline_capsule_width + 54}" stroke="{hex_color(COLORS["cyan"])}" stroke-opacity="0.32"/>
+  <g clip-path="url(#signalClip)">
+    <path d="M{signal_view_x} {signal_view_y + signal_baseline} H{signal_view_x + signal_view_width}" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.2"/>
+    <g class="signal-sweep signal-beam">
+      <rect x="{signal_view_x - signal_beam_width}" y="{signal_view_y}" width="{signal_beam_width}" height="{signal_view_height}" fill="url(#signalBeamGradient)"/>
+    </g>
+    <g class="wave-stream">
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-base"/>
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-glow"/>
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-core"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-base"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-glow"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-core"/>
+    </g>
+    <g class="wave-stream" mask="url(#signalFocusMask)">
+      <use href="#eegSegment" x="{signal_view_x}" y="{signal_view_y}" class="wave-focus"/>
+      <use href="#eegSegment" x="{signal_view_x + signal_loop_width}" y="{signal_view_y}" class="wave-focus"/>
+    </g>
   </g>
-  <g fill="none">
-    <rect x="76" y="91" width="238" height="148" rx="4" fill="#101F2E" stroke="#36566F" />
-    <path d="M77 205L113 174L147 184L187 143L229 183L267 160L313 189V238H77Z" fill="#1D3548" />
-    <path d="M78 223L133 197L168 212L203 191L242 213L276 191L313 209" stroke="#496A80" />
-    <circle cx="278" cy="119" r="9" stroke="#496A80" />
-    <path d="M134 135V116H153M215 116H234V135M234 202V221H215M153 221H134V202" stroke="#6EE7F9" stroke-width="3" />
-    <path d="M169 169H199M184 154V184" stroke="#6EE7F9" stroke-width="1.5" opacity=".6" />
-    <path d="M234 169H330C368 169 380 157 411 157" stroke="#58C7B1" stroke-width="1.5" />
-    <path d="M400 153L411 157L400 161" stroke="#58C7B1" stroke-width="1.5" />
+  <rect x="{tagline_capsule_x}" y="{tagline_capsule_y}" width="{tagline_capsule_width}" height="{tagline_capsule_height}" rx="17" fill="#0D1F2F" fill-opacity="0.72" stroke="{hex_color(COLORS["line"])}" stroke-opacity="0.55"/>
+  <use href="#titlePixels" x="0" y="{title_shadow_y}" fill="#06101A" opacity="0.84"/>
+  <use href="#titlePixels" fill="url(#titleFill)"/>
+  <g class="title-glow" filter="url(#titleGlow)">
+    <use href="#titlePixels" fill="{hex_color(COLORS["cyan"])}"/>
   </g>
-  <g stroke-width="1.3">{''.join(points)}</g>
-  <g fill="none">
-    <path d="M482 124L518 157L545 191M466 145L518 157L587 179" stroke="#6EE7F9" opacity=".48" />
-    <circle cx="518" cy="157" r="30" stroke="#6EE7F9" stroke-dasharray="3 7" opacity=".5" />
-    <circle cx="518" cy="157" r="12" fill="#0B1320" stroke="#6EE7F9" stroke-width="2" />
-    <path d="M697 169H719M710 165L721 169L710 173" stroke="#58C7B1" stroke-width="1.5" />
-    <g stroke-width="1.5" stroke-linejoin="round">{signals}</g>
-    <circle cx="1081" cy="169" r="68" fill="#102633" stroke="#58C7B1" stroke-width="1.5" />
-    <g clip-path="url(#scalp)" stroke="#58C7B1" opacity=".65">{contours}</g>
-    <path d="M1074 101L1081 93L1088 101M1012 155Q1002 155 1002 169Q1002 183 1012 183M1150 155Q1160 155 1160 169Q1160 183 1150 183" stroke="#58C7B1" />
+  <g fill="#FFFFFF" opacity="0.92">
+    {ignition_markup}
   </g>
-  <g fill="#D5E7F4">{electrodes}</g>
-  <g class="motion">
-    <circle r="10" fill="#6EE7F9" opacity=".12" />
-    <circle r="3.5" fill="#D5E7F4" />
-    <animateMotion dur="4.5s" repeatCount="1" fill="freeze" path="M184 169H330C371 169 380 157 415 157H518C559 157 560 169 604 169H1011C1036 169 1055 169 1081 169" />
+  <g clip-path="url(#titleClip)" opacity="0.72">
+    <g transform="rotate(-12 {NAMEPLATE_WIDTH / 2} {title_y + title_height / 2})">
+      <rect x="-180" y="{title_y - 24}" width="180" height="{title_height + 54}" fill="url(#scanBeamGradient)" class="scan-beam"/>
+    </g>
   </g>
-  <g font-size="16" fill="#D5E7F4" letter-spacing="2">
-    <text x="48" y="302">VISUAL DATA</text>
-    <text class="micro" x="600" y="302" text-anchor="middle" font-size="12" fill="#8FAABD">SHARED METHODS. DIFFERENT MODALITIES.</text>
-    <text x="1152" y="302" text-anchor="end">NEURAL DATA</text>
+  <g class="glitch-a" clip-path="url(#glitchSliceA)" filter="url(#softGlow)">
+    <use href="#titlePixels" fill="{hex_color(COLORS["cyan"])}"/>
   </g>
+  <g class="glitch-b" clip-path="url(#glitchSliceB)" filter="url(#softGlow)">
+    <use href="#titlePixels" fill="{hex_color(COLORS["teal"])}"/>
+  </g>
+  <g class="glitch-c" clip-path="url(#glitchSliceC)" filter="url(#softGlow)">
+    <use href="#titlePixels" fill="#D5E7F4"/>
+  </g>
+  <text x="{NAMEPLATE_WIDTH / 2}" y="{tagline_y}" class="tagline">{NAMEPLATE_TAGLINE}</text>
+  <text x="{NAMEPLATE_WIDTH / 2}" y="{descriptor_y}" class="descriptor">{NAMEPLATE_DESCRIPTOR}</text>
+</g>
+<rect x="{panel_x}" y="{panel_y}" width="{panel_width}" height="{panel_height}" rx="{panel_radius}" stroke="url(#panelBorder)" stroke-width="2.2" class="panel-border" filter="url(#panelGlow)"/>
 </svg>
-'''
+"""
+    destination.write_text(svg, encoding="utf-8")
 
 
-def verified_source(sources_root: Path, key: str) -> Path:
-    relative, expected = SOURCES[key]
-    path = sources_root / relative
-    if not path.is_file():
-        raise FileNotFoundError(f"Source missing: {path}. See assets/ASSET_GUIDE.md.")
-    actual = hashlib.sha256(path.read_bytes()).hexdigest()
-    if actual != expected:
-        raise ValueError(f"Unverified source: {path}\nExpected {expected}\nActual   {actual}")
-    return path
+def rgba(color: tuple[int, int, int], alpha: int) -> tuple[int, int, int, int]:
+    return color + (alpha,)
 
 
-def refresh_previews(sources_root: Path) -> None:
-    from PIL import Image, ImageOps
+def vertical_gradient(width: int, height: int, top: tuple[int, int, int], bottom: tuple[int, int, int]) -> Image.Image:
+    image = Image.new("RGBA", (width, height))
+    pixels = image.load()
+    for y in range(height):
+        t = y / max(height - 1, 1)
+        color = tuple(int(top[i] * (1 - t) + bottom[i] * t) for i in range(3))
+        for x in range(width):
+            pixels[x, y] = color + (255,)
+    return image
 
-    # Validate every input before writing any output.
-    paths = {key: verified_source(sources_root, key) for key in SOURCES}
-    resample = Image.Resampling.LANCZOS
 
-    def rgb(key: str):
-        with Image.open(paths[key]) as image:
-            return image.convert("RGB")
+def draw_glow_line(
+    base: Image.Image,
+    points: list[tuple[float, float]],
+    color: tuple[int, int, int],
+    *,
+    width: int = 2,
+    glow_radius: int = 6,
+    glow_alpha: int = 90,
+    core_alpha: int = 210,
+) -> None:
+    glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.line(points, fill=rgba(color, glow_alpha), width=width + 4)
+    glow = glow.filter(ImageFilter.GaussianBlur(glow_radius))
+    base.alpha_composite(glow)
+    ImageDraw.Draw(base).line(points, fill=rgba(color, core_alpha), width=width)
 
-    def save(image, name: str) -> None:
-        # Fresh canvases/conversion deliberately exclude source EXIF and metadata.
-        image.save(ASSETS / name, "WEBP", quality=86, method=6, exact=True)
 
-    canvas = Image.new("RGB", (1200, 350), "#292929")
-    topoplot = ImageOps.contain(rgb("topoplot"), (330, 326), resample)
-    spectrum = ImageOps.contain(
-        rgb("spectrum").crop((322, 28, 1854, 605)), (828, 326), resample
+def draw_masked_glow_line(
+    base: Image.Image,
+    points: list[tuple[float, float]],
+    color: tuple[int, int, int],
+    mask: Image.Image,
+    *,
+    width: int = 2,
+    glow_radius: int = 6,
+    glow_alpha: int = 90,
+    core_alpha: int = 210,
+) -> None:
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw_glow_line(
+        layer,
+        points,
+        color,
+        width=width,
+        glow_radius=glow_radius,
+        glow_alpha=glow_alpha,
+        core_alpha=core_alpha,
     )
-    canvas.paste(topoplot, (12 + (330 - topoplot.width) // 2, (350 - topoplot.height) // 2))
-    canvas.paste(spectrum, (360, (350 - spectrum.height) // 2))
-    save(canvas, PREVIEWS[0])
+    layer.putalpha(ImageChops.multiply(layer.getchannel("A"), mask))
+    base.alpha_composite(layer)
 
-    # Pz column only: standard, target, distractor. Retain labels, axes, colourbars.
-    wavelets = rgb("wavelets")
-    canvas = Image.new("RGB", (1200, 310), "white")
-    for i, (top, bottom) in enumerate([(300, 1285), (1303, 2288), (2306, 3291)]):
-        tile = ImageOps.contain(
-            wavelets.crop((3890, top, 5480, bottom)), (392, 300), resample
+
+def draw_glow_rect(
+    base: Image.Image,
+    bbox: tuple[int, int, int, int],
+    color: tuple[int, int, int],
+    *,
+    width: int = 2,
+    radius: int = 16,
+    glow_radius: int = 7,
+    glow_alpha: int = 70,
+    core_alpha: int = 150,
+    fill: tuple[int, int, int, int] | None = None,
+) -> None:
+    glow = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    glow_draw = ImageDraw.Draw(glow)
+    glow_draw.rounded_rectangle(bbox, radius=radius, outline=rgba(color, glow_alpha), width=width + 4, fill=fill)
+    glow = glow.filter(ImageFilter.GaussianBlur(glow_radius))
+    base.alpha_composite(glow)
+    ImageDraw.Draw(base).rounded_rectangle(bbox, radius=radius, outline=rgba(color, core_alpha), width=width, fill=fill)
+
+
+def add_grid(base: Image.Image, spacing: int, x_shift: float = 0.0) -> None:
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    width, height = base.size
+    x_offset = int(x_shift % spacing)
+    for x in range(-spacing + x_offset, width + spacing, spacing):
+        draw.line([(x, 0), (x, height)], fill=rgba(COLORS["line"], 32), width=1)
+    for y in range(0, height + spacing, spacing):
+        draw.line([(0, y), (width, y)], fill=rgba(COLORS["line"], 22), width=1)
+    base.alpha_composite(overlay)
+
+
+def add_scanlines(base: Image.Image, *, opacity: int = 10, step: int = 4) -> None:
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    width, height = base.size
+    for y in range(0, height, step):
+        draw.line([(0, y), (width, y)], fill=(255, 255, 255, opacity), width=1)
+    base.alpha_composite(overlay)
+
+
+def add_noise(base: Image.Image, *, seed: int, count: int, opacity: int = 22) -> None:
+    rng = Random(seed)
+    overlay = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    pixels = overlay.load()
+    width, height = base.size
+    for _ in range(count):
+        x = rng.randrange(width)
+        y = rng.randrange(height)
+        tone = COLORS["cyan"] if rng.random() > 0.55 else COLORS["teal"]
+        pixels[x, y] = tone + (opacity,)
+    overlay = overlay.filter(ImageFilter.GaussianBlur(0.2))
+    base.alpha_composite(overlay)
+
+
+def sample_frames(path: Path, *, step: int = 1, max_frames: int | None = None) -> list[Image.Image]:
+    frames: list[Image.Image] = []
+    with Image.open(path) as image:
+        for index, frame in enumerate(ImageSequence.Iterator(image)):
+            if index % step != 0:
+                continue
+            frames.append(frame.convert("RGBA"))
+            if max_frames is not None and len(frames) >= max_frames:
+                break
+    if not frames:
+        raise ValueError(f"No frames decoded from {path}")
+    return frames
+
+
+def rotate_frames(frames: list[Image.Image], start_index: int) -> list[Image.Image]:
+    if not frames:
+        return frames
+    offset = start_index % len(frames)
+    return frames[offset:] + frames[:offset]
+
+
+def render_panel_frame(
+    source_frame: Image.Image,
+    *,
+    frame_index: int,
+    total_frames: int,
+    canvas_size: tuple[int, int],
+    content_size: tuple[int, int],
+    border_color: tuple[int, int, int],
+) -> Image.Image:
+    width, height = canvas_size
+    phase = frame_index / max(total_frames, 1)
+
+    panel = vertical_gradient(width, height, COLORS["panel_top"], COLORS["panel_bottom"])
+    add_grid(panel, 28, x_shift=phase * 8)
+    draw_glow_rect(
+        panel,
+        (10, 10, width - 10, height - 10),
+        border_color,
+        width=2,
+        radius=18,
+        glow_alpha=44,
+        core_alpha=114,
+        fill=rgba(COLORS["bg_top"], 38),
+    )
+
+    thumb = ImageOps.contain(source_frame, content_size)
+    layer = Image.new("RGBA", panel.size, (0, 0, 0, 0))
+    x = (width - thumb.width) // 2
+    y = (height - thumb.height) // 2
+    layer.paste(thumb, (x, y), thumb)
+    panel.alpha_composite(layer)
+
+    draw_glow_rect(
+        panel,
+        (24, 24, width - 24, height - 24),
+        COLORS["line"],
+        width=1,
+        radius=14,
+        glow_radius=4,
+        glow_alpha=10,
+        core_alpha=84,
+    )
+    add_scanlines(panel)
+    add_noise(panel, seed=frame_index * 19 + 7, count=110)
+    return panel
+
+
+def build_panel_gif(
+    source_path: Path,
+    destination: Path,
+    *,
+    frame_step: int,
+    max_frames: int | None,
+    canvas_size: tuple[int, int],
+    content_size: tuple[int, int],
+    border_color: tuple[int, int, int],
+    duration_ms: int,
+    start_offset: int = 0,
+) -> None:
+    frames = sample_frames(source_path, step=frame_step, max_frames=max_frames)
+    frames = rotate_frames(frames, start_offset)
+    rendered = [
+        render_panel_frame(
+            frame,
+            frame_index=index,
+            total_frames=len(frames),
+            canvas_size=canvas_size,
+            content_size=content_size,
+            border_color=border_color,
         )
-        canvas.paste(tile, (i * 400 + (400 - tile.width) // 2, (310 - tile.height) // 2))
-    save(canvas, PREVIEWS[1])
+        for index, frame in enumerate(frames)
+    ]
+    save_gif(destination, rendered, duration_ms)
 
-    save(ImageOps.contain(rgb("rotation"), (1200, 500), resample), PREVIEWS[2])
+
+def close_eeg_loop(series: list[float]) -> list[float]:
+    if len(series) < 2:
+        return series
+    drift = series[-1] - series[0]
+    last_index = len(series) - 1
+    looped = [value - drift * (index / last_index) for index, value in enumerate(series)]
+    looped[-1] = looped[0]
+    return looped
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--refresh-evidence", action="store_true")
-    parser.add_argument("--sources-root", type=Path, default=ROOT.parent)
-    args = parser.parse_args()
-    ASSETS.mkdir(exist_ok=True)
-    if args.refresh_evidence:
-        refresh_previews(args.sources_root.resolve())
-    missing = [name for name in PREVIEWS if not (ASSETS / name).is_file()]
-    if missing:
-        raise FileNotFoundError(
-            f"Missing committed previews: {', '.join(missing)}. "
-            "Use --refresh-evidence with the documented source checkouts."
-        )
-    (ASSETS / NAMEPLATE_FILENAME).write_text(hero_svg(), encoding="utf-8", newline="\n")
-    for name in (NAMEPLATE_FILENAME, *PREVIEWS):
-        print(f"{name}: {(ASSETS / name).stat().st_size:,} bytes")
+def sample_looped_eeg(series: list[float], sample_position: float) -> float:
+    period = len(series) - 1
+    base_index = int(sample_position) % period
+    blend = sample_position - int(sample_position)
+    next_index = (base_index + 1) % period
+    return series[base_index] * (1.0 - blend) + series[next_index] * blend
+
+
+def build_divider_eeg_points(
+    frame_index: int,
+    *,
+    seed: int,
+    amplitude_scale: float = 0.92,
+    y_offset: float = 0.0,
+) -> list[tuple[float, float]]:
+    sample_count = DIVIDER_EEG_LOOP_WIDTH // DIVIDER_EEG_STEP + 1
+    series = close_eeg_loop(build_eeg_series(sample_count, seed=seed))
+    phase = (frame_index % DIVIDER_FRAMES) / DIVIDER_FRAMES
+    stream_offset = phase * DIVIDER_EEG_LOOP_WIDTH
+    baseline = DIVIDER_HEIGHT / 2 + y_offset
+    points: list[tuple[float, float]] = []
+    for x in range(0, DIVIDER_WIDTH + DIVIDER_EEG_STEP, DIVIDER_EEG_STEP):
+        sample_position = ((x + stream_offset) % DIVIDER_EEG_LOOP_WIDTH) / DIVIDER_EEG_STEP
+        value = sample_looped_eeg(series, sample_position)
+        points.append((x, baseline - value * amplitude_scale))
+    return points
+
+
+def build_beam_mask(center_x: float, *, beam_width: int, max_alpha: int) -> Image.Image:
+    mask = Image.new("L", (DIVIDER_WIDTH, DIVIDER_HEIGHT), 0)
+    draw = ImageDraw.Draw(mask)
+    half_width = beam_width / 2
+    left = max(0, int(center_x - half_width) - 2)
+    right = min(DIVIDER_WIDTH, int(center_x + half_width) + 3)
+    for x in range(left, right):
+        distance = abs(x - center_x) / half_width
+        if distance <= 1.0:
+            strength = int(max_alpha * (1.0 - distance) ** 2)
+            draw.line((x, 6, x, DIVIDER_HEIGHT - 6), fill=strength, width=1)
+    return mask.filter(ImageFilter.GaussianBlur(3))
+
+
+def draw_signal_beam(base: Image.Image, mask: Image.Image) -> None:
+    cyan_layer = Image.new("RGBA", base.size, rgba(COLORS["cyan"], 0))
+    cyan_layer.putalpha(mask.point(lambda value: int(value * 0.42)))
+    base.alpha_composite(cyan_layer)
+
+    hot_layer = Image.new("RGBA", base.size, (255, 255, 255, 0))
+    hot_layer.putalpha(mask.point(lambda value: int(value * 0.18)))
+    base.alpha_composite(hot_layer)
+
+
+def render_hero_eeg_divider_frame(
+    frame_index: int,
+    *,
+    seed: int,
+    accent_color: tuple[int, int, int] = COLORS["cyan"],
+) -> Image.Image:
+    phase = (frame_index % DIVIDER_FRAMES) / DIVIDER_FRAMES
+    image = vertical_gradient(DIVIDER_WIDTH, DIVIDER_HEIGHT, COLORS["bg_top"], COLORS["bg_bottom"])
+    add_grid(image, 30, x_shift=phase * 22)
+
+    draw = ImageDraw.Draw(image)
+    baseline = DIVIDER_HEIGHT / 2
+    draw.line((0, baseline, DIVIDER_WIDTH, baseline), fill=rgba(COLORS["line"], 78), width=1)
+    draw.line((0, 10, DIVIDER_WIDTH, 10), fill=rgba(COLORS["line"], 34), width=1)
+    draw.line((0, DIVIDER_HEIGHT - 10, DIVIDER_WIDTH, DIVIDER_HEIGHT - 10), fill=rgba(COLORS["line"], 34), width=1)
+
+    trail_points = build_divider_eeg_points(frame_index - 1, seed=seed, amplitude_scale=0.78)
+    draw_glow_line(image, trail_points, COLORS["teal"], width=1, glow_radius=5, glow_alpha=34, core_alpha=74)
+
+    points = build_divider_eeg_points(frame_index, seed=seed, amplitude_scale=0.94)
+    draw_glow_line(image, points, accent_color, width=2, glow_radius=7, glow_alpha=118, core_alpha=236)
+    ImageDraw.Draw(image).line(points, fill=(221, 247, 255, 236), width=1)
+
+    beam_center = -120 + (DIVIDER_WIDTH + 240) * phase
+    beam_mask = build_beam_mask(beam_center, beam_width=218, max_alpha=235)
+    draw_signal_beam(image, beam_mask)
+    draw_masked_glow_line(
+        image,
+        points,
+        (255, 255, 255),
+        beam_mask,
+        width=3,
+        glow_radius=7,
+        glow_alpha=170,
+        core_alpha=248,
+    )
+
+    add_scanlines(image, opacity=9)
+    add_noise(image, seed=frame_index * 41 + seed, count=220, opacity=18)
+    return image
+
+
+def render_divider_frame(frame_index: int) -> Image.Image:
+    return render_hero_eeg_divider_frame(frame_index, seed=211, accent_color=COLORS["cyan"])
+
+
+def render_eeg_alpha_divider_frame(frame_index: int) -> Image.Image:
+    return render_hero_eeg_divider_frame(frame_index, seed=263, accent_color=COLORS["cyan"])
+
+
+def render_eeg_clinical_divider_frame(frame_index: int) -> Image.Image:
+    return render_hero_eeg_divider_frame(frame_index, seed=307, accent_color=COLORS["teal"])
+
+
+def render_eeg_evoked_divider_frame(frame_index: int) -> Image.Image:
+    return render_hero_eeg_divider_frame(frame_index, seed=359, accent_color=COLORS["cyan"])
+
+
+def save_gif(path: Path, frames: list[Image.Image], duration_ms: int) -> None:
+    palette_frames = [frame.convert("P", palette=Image.Palette.ADAPTIVE, colors=96) for frame in frames]
+    palette_frames[0].save(
+        path,
+        save_all=True,
+        append_images=palette_frames[1:],
+        loop=0,
+        duration=duration_ms,
+        optimize=False,
+        disposal=2,
+    )
+
+
+def build() -> None:
+    ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+
+    build_nameplate_svg(ASSETS_DIR / "profile-nameplate.svg")
+
+    build_panel_gif(
+        BRAIN_DIR / "Head-mri-animation.gif",
+        ASSETS_DIR / "head-mri-panel.gif",
+        frame_step=2,
+        max_frames=72,
+        canvas_size=(560, 320),
+        content_size=(500, 252),
+        border_color=COLORS["cyan"],
+        duration_ms=95,
+        start_offset=40,
+    )
+    build_panel_gif(
+        BRAIN_DIR / "Brainanim-FreeSurfer.gif",
+        ASSETS_DIR / "freesurfer-panel.gif",
+        frame_step=1,
+        max_frames=None,
+        canvas_size=(420, 300),
+        content_size=(360, 240),
+        border_color=COLORS["teal"],
+        duration_ms=110,
+    )
+
+    divider_frames = [render_divider_frame(index) for index in range(DIVIDER_FRAMES)]
+    save_gif(ASSETS_DIR / "signal-divider.gif", divider_frames, 80)
+    eeg_alpha_frames = [render_eeg_alpha_divider_frame(index) for index in range(DIVIDER_FRAMES)]
+    save_gif(ASSETS_DIR / "signal-divider-eeg-alpha.gif", eeg_alpha_frames, 80)
+    eeg_clinical_frames = [render_eeg_clinical_divider_frame(index) for index in range(DIVIDER_FRAMES)]
+    save_gif(ASSETS_DIR / "signal-divider-eeg-clinical.gif", eeg_clinical_frames, 85)
+    eeg_evoked_frames = [render_eeg_evoked_divider_frame(index) for index in range(DIVIDER_FRAMES)]
+    save_gif(ASSETS_DIR / "signal-divider-eeg-evoked.gif", eeg_evoked_frames, 85)
 
 
 if __name__ == "__main__":
-    main()
+    build()
