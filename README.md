@@ -1,217 +1,96 @@
-<!--
-README CALIBRATION MAP
-{{GITHUB_USERNAME}} = DavideStefanelli97
-{{DISPLAY_NAME}} = Davide Stefanelli
-{{PRIMARY_ROLE}} = Neuroscience-focused Biomedical Engineer
-{{SECONDARY_ROLE}} = Research Engineer in Computer Vision
-{{SUMMARY}} = Building AI-driven workflows for medical imaging, EEG analysis, and reproducible computer vision research.
-{{LINK_PORTFOLIO}} = https://example.com
-{{LINK_LINKEDIN}} = https://linkedin.com/in/your-handle
-{{LINK_EMAIL}} = [email protected]
+# Davide Stefanelli
 
-If you change {{GITHUB_USERNAME}}, update the hardcoded widget URLs in this file as well.
--->
+### Research engineering across visual and neural data
 
-<p align="center">
-  <img src="./assets/profile-nameplate.svg" alt="Davide Stefanelli — From brain signals to intelligent systems — AI / Computer Vision / Neuro-engineering / Neuro-imaging / NeuroScience" width="100%" />
-</p>
+**Computer Vision / ML Research Engineer** · M.Sc. candidate in **Biomedical Engineering for Neuroscience**, University of Bologna.
 
-<table>
-  <tr>
-    <td width="52%" valign="top">
-      <strong>Neuroscience-focused Biomedical Engineer</strong><br/>
-      <strong>Research Engineer in Computer Vision</strong><br/><br/>
-      I work at the intersection of medical imaging, neuroscience, and computer vision.<br/><br/>
-      Most of what I build is about turning complex data into reliable workflows: segmentation and registration on DICOM images, EEG preprocessing and ERP / time-frequency analysis, and reproducible experiments that can actually be inspected, rerun, and extended.<br/><br/>
-      I care about interpretable systems, clean implementation, and research code that does not stop at a notebook screenshot.
-    </td>
-    <td width="48%" valign="top">
-      <img src="./assets/head-mri-panel.gif" alt="Structural brain MRI animation panel" width="100%" />
-    </td>
-  </tr>
-</table>
+[Selected work](#selected-work) · [Research direction](#research-direction) · [LinkedIn](https://www.linkedin.com/in/davide-stefanelli-engineer) · [Email](mailto:davide.stefanelli.ing@gmail.com)
 
-<table>
-  <tr>
-    <td width="25%" align="center" valign="top">
-      <strong>Focus</strong><br/>
-      <sub>AI for medical imaging</sub>
-    </td>
-    <td width="25%" align="center" valign="top">
-      <strong>Signals</strong><br/>
-      <sub>EEG / ERP / CWT pipelines</sub>
-    </td>
-    <td width="25%" align="center" valign="top">
-      <strong>Vision</strong><br/>
-      <sub>Segmentation / registration</sub>
-    </td>
-    <td width="25%" align="center" valign="top">
-      <strong>Workflow</strong><br/>
-      <sub>Reproducible, report-oriented</sub>
-    </td>
-  </tr>
-</table>
+<img src="assets/profile-nameplate-clean.svg" alt="An instrument trace connects a visual crop, an embedding neighbourhood and EEG traces with a scalp contour. A single pulse follows the path from data to representation to measurement." width="100%" />
 
-<p align="center">
-  <a href="https://github.com/DavideStefanelli97">GitHub / DavideStefanelli97</a>
-</p>
+I build and evaluate visual re-identification and retrieval systems, from data curation to reproducible experiments and failure analysis. My EEG and medical-imaging work applies the same discipline: explicit evaluation, inspectable outputs and scientific software.
 
-<table>
-  <tr>
-    <td width="38%" valign="top">
-      <img src="./assets/freesurfer-panel.gif" alt="FreeSurfer cortical surface animation panel" width="100%" />
-    </td>
-    <td width="62%" valign="top">
-      <strong>What I do</strong><br/>
-      AI for medical imaging, neuro signal analysis, and computer vision pipelines with a strong preference for interpretable outputs over black-box polish.<br/><br/>
-      <strong>What I like building</strong><br/>
-      Reproducible workflows, clear evaluation setups, report-driven experiments, and technical systems that stay readable as they grow.<br/><br/>
-      <strong>Current directions</strong><br/>
-      Medical imaging analysis, EEG processing, representation learning, and computer vision problems where robust matching and structured evaluation matter.
-    </td>
-  </tr>
-</table>
+**Visual retrieval** / **Neural representations** / **Biomedical signals** / **Scientific software**
 
-<p align="center">
-  <img src="./assets/signal-divider.gif" alt="Animated EEG signal divider" width="100%" />
-</p>
+## Selected work
 
-## Featured Repositories
-<table>
-  <tr>
-    <td width="42%" valign="top">
-      <a href="https://github.com/DavideStefanelli97/Medical-Imaging-Analysis">
-        <img src="https://github-readme-stats.vercel.app/api/pin/?username=DavideStefanelli97&repo=Medical-Imaging-Analysis&hide_border=true&bg_color=0B1320&title_color=6EE7F9&text_color=D5E7F4&icon_color=58C7B1" alt="Medical Imaging Analysis repository card" width="100%" />
-      </a>
-    </td>
-    <td width="58%" valign="top">
-      <strong>Domain</strong><br/>
-      MATLAB workflows for segmentation and rigid registration on DICOM-derived medical imaging data.<br/><br/>
-      <strong>Methods</strong><br/>
-      Chan-Vese and Malladi-Sethian level-set segmentation, plus NCC / SSD / Mutual Information registration metrics.<br/><br/>
-      <strong>Evidence</strong><br/>
-      A classical computer vision pipeline for biomedical analysis where segmentation and registration behavior stays inspectable end to end.
-    </td>
-  </tr>
-</table>
+### 01 / EEG brain fingerprinting with metric learning
 
-<table>
-  <tr>
-    <td width="42%" valign="top">
-      <a href="https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline">
-        <img src="https://github-readme-stats.vercel.app/api/pin/?username=DavideStefanelli97&repo=MATLAB-EEG-Processing-Pipeline&hide_border=true&bg_color=0B1320&title_color=6EE7F9&text_color=D5E7F4&icon_color=58C7B1" alt="MATLAB EEG Processing Pipeline repository card" width="100%" />
-      </a>
-    </td>
-    <td width="58%" valign="top">
-      <strong>Domain</strong><br/>
-      End-to-end EEG analysis in MATLAB, from preprocessing to ERP and time-frequency outputs.<br/><br/>
-      <strong>Methods</strong><br/>
-      Filtering, ICA, bad-channel handling, waveform analysis, grand averages, and CWT-based time-frequency exploration.<br/><br/>
-      <strong>Evidence</strong><br/>
-      Turns raw electrophysiology into analysis-ready signals and publication-ready figures inside one coherent, readable pipeline.
-    </td>
-  </tr>
-</table>
+**Research snapshot · public code release in preparation**
 
-<table>
-  <tr>
-    <td width="42%" valign="top">
-      <a href="https://github.com/DavideStefanelli97/Neural-Networks-Portfolio">
-        <img src="https://github-readme-stats.vercel.app/api/pin/?username=DavideStefanelli97&repo=Neural-Networks-Portfolio&hide_border=true&bg_color=0B1320&title_color=6EE7F9&text_color=D5E7F4&icon_color=58C7B1" alt="Neural Networks Portfolio repository card" width="100%" />
-      </a>
-    </td>
-    <td width="58%" valign="top">
-      <strong>Domain</strong><br/>
-      Neural network experiments across Python and MATLAB with reproducibility built into the workflow.<br/><br/>
-      <strong>Methods</strong><br/>
-      IF models, Hopfield networks, deep learning exercises, metrics, logs, and report-driven runs with a Poetry-managed setup.<br/><br/>
-      <strong>Evidence</strong><br/>
-      A compact record of repeatable AI experiments spanning dynamical models, classical networks, and deep learning exercises.
-    </td>
-  </tr>
-</table>
+Can an EEG representation identify a person unseen during training? I built an open-set identification workflow on [PhysioNet EEGMMIDB](https://physionet.org/content/eegmmidb/1.0.0/): 64-channel, two-second windows, CNN / EEGNet encoders and 128-dimensional normalised embeddings. Subject- and run-aware splits connect metric-learning training to verification and query–gallery evaluation.
 
-<p align="center">
-  <img src="./assets/console-band.svg" alt="AI, neuro signals, and medical imaging focus band" width="100%" />
-</p>
+**Documented local evaluation:** 12 held-out subjects, 9,553 test segments. **Rank-1 86.4% · Rank-5 97.2% · verification AUC 0.919.** The implementation is not yet publicly inspectable.
 
-## Research and Engineering Focus
-<table>
-  <tr>
-    <td width="33%" valign="top">
-      <strong>AI and Representation Learning</strong><br/>
-      Experiment-driven work on embeddings, model behavior, and reproducible evaluation across AI workflows and neural network exercises.
-    </td>
-    <td width="33%" valign="top">
-      <strong>EEG and Neuro Signals</strong><br/>
-      Signal preprocessing, artifact handling, ERP analysis, and time-frequency methods for interpretable electrophysiology pipelines.
-    </td>
-    <td width="33%" valign="top">
-      <strong>Medical Imaging and Computer Vision</strong><br/>
-      DICOM-centered segmentation and registration workflows connecting biomedical engineering with classical and report-oriented computer vision methods.
-    </td>
-  </tr>
-</table>
+### 02 / NEURO-SCOPE
 
-## Core Stack and Methods
-<p align="center">
-  <img src="https://img.shields.io/badge/MATLAB-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="MATLAB badge" />
-  <img src="https://img.shields.io/badge/Python-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Python badge" />
-  <img src="https://img.shields.io/badge/Poetry-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Poetry badge" />
-  <img src="https://img.shields.io/badge/DICOM-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="DICOM badge" />
-  <img src="https://img.shields.io/badge/Segmentation-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Segmentation badge" />
-  <img src="https://img.shields.io/badge/Registration-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Registration badge" />
-  <img src="https://img.shields.io/badge/EEG-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="EEG badge" />
-  <img src="https://img.shields.io/badge/ERP-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="ERP badge" />
-  <img src="https://img.shields.io/badge/CWT-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="CWT badge" />
-  <img src="https://img.shields.io/badge/Computer%20Vision-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Computer vision badge" />
-  <img src="https://img.shields.io/badge/Representation%20Learning-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Representation learning badge" />
-  <img src="https://img.shields.io/badge/Reproducible%20Reports-0B1320?style=for-the-badge&labelColor=08101C&color=102739" alt="Reproducible reports badge" />
-</p>
+**An interactive workbench for exploring EEG in space and time.**
 
-<p align="center">
-  <img src="./assets/signal-divider.gif" alt="Animated EEG signal divider" width="100%" />
-</p>
+Built a Python application with linked 3D scalp, topographic, spectral and waveform views: precomputed RBF interpolation, non-destructive filters, montage editing and saved sessions. Implemented with **PyQt6, PyVista / VTK and MNE**.
 
-## GitHub Telemetry
-<p align="center">
-  <img src="https://github-readme-stats.vercel.app/api?username=DavideStefanelli97&show_icons=true&include_all_commits=true&hide_border=true&bg_color=0B1320&title_color=6EE7F9&text_color=D5E7F4&icon_color=58C7B1&rank_icon=github&custom_title=GitHub%20Telemetry" alt="GitHub telemetry card" height="178" />
-  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=DavideStefanelli97&layout=compact&langs_count=8&hide_border=true&bg_color=0B1320&title_color=6EE7F9&text_color=D5E7F4&icon_color=58C7B1&custom_title=Language%20Mix" alt="Top languages card" height="178" />
-</p>
+**Inspect:** six format families, a synthetic demo, backend tests and Windows build instructions.
 
-<p align="center">
-  <img src="https://github-readme-activity-graph.vercel.app/graph?username=DavideStefanelli97&bg_color=0B1320&color=D5E7F4&line=6EE7F9&point=58C7B1&area=true&area_color=143246&hide_border=true&title_color=6EE7F9&custom_title=Recent%20Contribution%20Activity" alt="Contribution activity graph" width="100%" />
-</p>
+[Code & demo](https://github.com/DavideStefanelli97/NEURO-SCOPE) · [Interface tour](https://github.com/DavideStefanelli97/NEURO-SCOPE/blob/main/docs/INTERFACE_TOUR.md) · [Tests](https://github.com/DavideStefanelli97/NEURO-SCOPE/tree/main/tests)
 
-<p align="center">
-  <img src="./assets/signal-divider.gif" alt="Animated EEG signal divider" width="100%" />
-</p>
+<a href="https://github.com/DavideStefanelli97/NEURO-SCOPE/blob/main/docs/INTERFACE_TOUR.md">
+  <img src="assets/work-neuroscope.webp" alt="NEURO-SCOPE synthetic demo: an electrode-labelled scalp topography beside the filter-comparison spectrum. Cropped from the public interface tour." width="100%" />
+</a>
 
-## Contact and Links
-<p align="center">
-  <strong>Open to research, biomedical engineering, and AI-for-health collaborations.</strong>
-</p>
+### 03 / MATLAB EEG Processing Pipeline
 
-```text
-GitHub    // https://github.com/DavideStefanelli97
-Portfolio // {{LINK_PORTFOLIO}}
-LinkedIn  // {{LINK_LINKEDIN}}
-Email     // {{LINK_EMAIL}}
-```
+**From raw recordings to traceable ERP and time–frequency results.**
+
+Built four connected stages—preprocessing, ICA review, ERP / P300 and Morlet-wavelet analysis—with JSON configuration, versioned ICA decisions and `.mat` contracts. Subject diagnostics and group reports make processing decisions traceable through to the outputs.
+
+**Inspect:** dozens of diagnostic figures, scientific reports and plotting / regression checks. Full runs require the documented external data and MATLAB toolboxes.
+
+[Code & workflow](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline) · [Scientific reports](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline/tree/main/reports) · [Data requirements](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline/blob/main/docs/data_manifest.md)
+
+<a href="https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline/tree/main/outputs/figures">
+  <img src="assets/work-eeg-pipeline.webp" alt="Recorded oddball EEG, channel Pz: Morlet time–frequency power for standard, target and distractor events, with time, frequency and decibel scales retained from the public diagnostic figure." width="100%" />
+</a>
+
+### 04 / Medical Imaging Analysis
+
+**Classical vision methods with numerical and visual diagnostics.**
+
+Implemented DICOM-centred segmentation and rigid registration in MATLAB: Chan–Vese / Malladi–Sethian level sets, finite-difference solvers and NCC / SSD / mutual-information objectives. Reports expose numerical methods, metric curves and contributions.
+
+**Synthetic-rotation case:** 720 candidate angles; NCC **0.8834 → 0.9967**, mutual information **1.1180 → 2.9144**. Case-study registration metrics, not clinical validation or a segmentation benchmark.
+
+[Code & methods](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis) · [Rotation report](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis/blob/master/results/reg_rotation/REPORT.md) · [Contribution map](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis/blob/master/CONTRIBUTIONS.md)
+
+<a href="https://github.com/DavideStefanelli97/Medical-Imaging-Analysis/blob/master/results/reg_rotation/REPORT.md">
+  <img src="assets/work-medical-imaging.webp" alt="Public rotation-search diagnostics: mutual information, normalised cross-correlation and sum of squared differences over candidate angles; the selected alignment is marked near 340 degrees." width="100%" />
+</a>
+
+## Research direction
+
+How can a representation remain useful across subjects, acquisition conditions and tasks? My direction is neural representation learning, building on the evaluation discipline of visual retrieval.
+
+Professionally, I own the ReID experiment loop: data curation, PyTorch training, evaluation and failure analysis. Production work is private; this portfolio contains no internal datasets, benchmarks or implementation details.
+
+Open to **PhD research in Europe and international collaborations** in neural representation learning, biomedical signal processing, NeuroAI and reproducible scientific ML, and aligned research-engineering roles.
+
+## Methods & tools
+
+- **Learn & retrieve:** Python, PyTorch · representation and metric learning · embedding retrieval · verification and query–gallery evaluation.
+- **Process & measure:** MATLAB, MNE, SciPy · EEG / ERP / time–frequency analysis · DICOM · segmentation and registration.
+- **Build & reproduce:** PyQt6, PyVista / VTK · configuration-driven pipelines · Git, Poetry, pytest · scientific reporting.
 
 <details>
-  <summary><strong>README calibration map</strong></summary>
+<summary>Further work: neural dynamics and associative memory</summary>
 
-```text
-{{GITHUB_USERNAME}} = DavideStefanelli97
-{{DISPLAY_NAME}} = Davide Stefanelli
-{{PRIMARY_ROLE}} = Neuroscience-focused Biomedical Engineer
-{{SECONDARY_ROLE}} = Research Engineer in Computer Vision
-{{SUMMARY}} = Building AI-driven workflows for medical imaging, EEG analysis, and reproducible computer vision research.
-{{LINK_PORTFOLIO}} = https://example.com
-{{LINK_LINKEDIN}} = https://linkedin.com/in/your-handle
-{{LINK_EMAIL}} = [email protected]
-```
+The public [Neural Networks Portfolio](https://github.com/DavideStefanelli97/Neural-Networks-Portfolio) contains nine exercises across four chapters: integrate-and-fire models, Jansen–Rit neural masses, Hebbian learning and Hopfield networks. It connects model implementation with repeatable runs, diagnostics and reports.
 
-`assets/profile-nameplate.svg`, `assets/head-mri-panel.gif`, `assets/freesurfer-panel.gif`, and `assets/signal-divider.gif` are generated locally with `python scripts/generate_assets.py`.
 </details>
+
+## Get in touch
+
+For a research conversation, collaboration or a role at the intersection of visual and neural data:
+
+[**davide.stefanelli.ing@gmail.com**](mailto:davide.stefanelli.ing@gmail.com) · [LinkedIn](https://www.linkedin.com/in/davide-stefanelli-engineer) · [GitHub](https://github.com/DavideStefanelli97)
+
+---
+
+<sub>Original schematic hero; project-derived previews. Motion plays once and respects reduced-motion preferences. [Asset provenance & regeneration](assets/ASSET_GUIDE.md).</sub>
