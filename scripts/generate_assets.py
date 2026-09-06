@@ -616,6 +616,11 @@ def build() -> None:
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
 
     build_nameplate_svg(ASSETS_DIR / "profile-nameplate.svg")
+    if __package__:
+        from .generate_signal_divider import build_signal_divider
+    else:
+        from generate_signal_divider import build_signal_divider
+    build_signal_divider(ASSETS_DIR / "signal-divider.svg")
 
     build_panel_gif(
         BRAIN_DIR / "Head-mri-animation.gif",

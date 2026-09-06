@@ -2,22 +2,19 @@
 
 Self-contained vector art: no external fonts, JavaScript or dependencies.
 """
-from math import sin
 from pathlib import Path
 
 
 def build_nameplate_svg(destination: Path) -> None:
-    # Decorative signal, not measured EEG data.
-    wave = " ".join(
-        f"{'M' if x == 0 else 'L'}{x},{342 + 7*sin(x/19) + 4*sin(x/7) + 15*sin(x/38)*sin(x/13):.2f}"
-        for x in range(0, 1201, 3)
-    )
     if __package__:
         from .brain_sprite import brain_sprite
         from .pixel_lettering import lettering_paths
+        from .signal_art import signal_path
     else:
         from brain_sprite import brain_sprite
         from pixel_lettering import lettering_paths
+        from signal_art import signal_path
+    wave = signal_path()
     brain_css, brain_markup = brain_sprite()
     letter_path, highlight_path = lettering_paths()
     svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">

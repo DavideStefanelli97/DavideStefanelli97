@@ -20,41 +20,60 @@ At **Vivilo** (formerly Jubatus), I develop visual re-identification and retriev
 Alongside this, I am completing an **M.Sc. in Biomedical Engineering for Neuroscience** at the University of Bologna, with graduation expected in **March 2027**. I am interested in how representation learning can generalize across subjects and make neural and biomedical data easier to interpret.
 
 <p align="center">
-  <img src="./assets/signal-divider.gif" alt="" width="100%" />
+  <img src="./assets/signal-divider.svg" alt="" width="100%" />
 </p>
 
 ## Selected projects
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <h3><a href="https://github.com/DavideStefanelli97/NEURO-SCOPE">01 / NeuroScope ↗</a></h3>
-      <p><strong>Explore EEG in space and time.</strong></p>
-      <p>A desktop app that projects channel activity onto a 3D head, with scalp heatmaps, signal inspection, topographic views, and a built-in synthetic EEG demo.</p>
-      <p><sub>Python · PyQt6 · PyVista / VTK · MNE</sub><br/><sub>Early public release · Interactive scientific software</sub></p>
-    </td>
-    <td width="50%" valign="top">
-      <h3><a href="https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline">02 / EEG Processing ↗</a></h3>
-      <p><strong>From raw recordings to ERP and time–frequency analysis.</strong></p>
-      <p>A staged workflow for filtering, bad-channel handling, ICA artifact removal, ERP / P300 analysis, and Morlet CWT, with configuration files and diagnostic figures.</p>
-      <p><sub>MATLAB · EEGLAB · ICA · ERP · CWT</sub><br/><sub>Signal processing · Reproducible analysis</sub></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <h3><a href="https://github.com/DavideStefanelli97/Medical-Imaging-Analysis">03 / Medical Imaging ↗</a></h3>
-      <p><strong>Segment anatomy. Align medical images.</strong></p>
-      <p>DICOM workflows using Chan–Vese and Malladi–Sethian level sets, plus rigid registration with NCC, SSD, and mutual information. Includes visual reports for inspecting results.</p>
-      <p><sub>MATLAB · DICOM · Segmentation · Registration</sub><br/><sub>Classical computer vision · Biomedical analysis</sub></p>
-    </td>
-    <td width="50%" valign="top">
-      <h3><a href="https://github.com/DavideStefanelli97/Neural-Networks-Portfolio">04 / Neural Networks ↗</a></h3>
-      <p><strong>Connect neural models with learning algorithms.</strong></p>
-      <p>Coursework spanning integrate-and-fire neurons, neural mass models, Hopfield networks, backpropagation, and deep learning, with repeatable runs, plots, and per-exercise reports.</p>
-      <p><sub>Python · MATLAB · TensorFlow / Keras · Poetry</sub><br/><sub>Computational modeling · Learning experiments</sub></p>
-    </td>
-  </tr>
-</table>
+### [EEG Processing Pipeline ↗](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline)
+
+**From raw recordings to the dynamics of attention.**
+
+A four-stage MATLAB / EEGLAB workflow for a three-stimulus oddball task: filtering and channel quality control, ICA artifact removal, ERP / P300 analysis, and Morlet time–frequency decomposition. Configuration files and diagnostic reports make each processing step inspectable.
+
+<p><sub>MATLAB · EEGLAB · ICA · ERP / P300 · Morlet CWT</sub></p>
+
+<p align="center">
+  <a href="./assets/projects/eeg-erp-topomaps.png"><img src="./assets/projects/eeg-erp-topomaps.png" alt="Grand-average EEG scalp maps from 25 subjects, comparing standard, target and distractor responses from 0 to 700 milliseconds" width="100%" /></a>
+  <br/>
+  <sub><strong>EEG across space and time.</strong> Grand-average scalp potentials · 25 subjects · Standard, target and distractor stimuli.</sub>
+</p>
+
+<details>
+  <summary>Explore the time–frequency view</summary>
+  <br/>
+  <p align="center">
+    <a href="./assets/projects/eeg-time-frequency.png"><img src="./assets/projects/eeg-time-frequency.png" alt="Grand-average Morlet time-frequency maps at Fz, Cz and Pz for standard, target and distractor stimuli, with power in decibels relative to baseline" width="100%" /></a>
+    <br/>
+    <sub>Morlet CWT at Fz, Cz and Pz · Baseline-relative power in dB.</sub>
+  </p>
+</details>
+
+[Explore the pipeline →](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline)
+
+<br/>
+
+### [Medical Imaging Analysis ↗](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis)
+
+**From image intensities to anatomical boundaries.**
+
+Level-set segmentation with Chan–Vese and Malladi–Sethian methods, from kidney and cardiac contours to a slice-by-slice left atrium reconstruction. Complementary rigid-registration workflows align medical images using NCC, SSD and mutual information, with visual reports to inspect the results.
+
+<p><sub>MATLAB · DICOM · Level sets · 3D reconstruction · Image registration</sub></p>
+
+<p align="center">
+  <a href="./assets/projects/imaging-ventricle-evolution.gif"><img src="./assets/projects/imaging-ventricle-evolution.gif" alt="Animated Malladi-Sethian contour evolution segmenting the left ventricle on a cardiac image" width="49%" /></a>
+  <a href="./assets/projects/imaging-atrium-slices.gif"><img src="./assets/projects/imaging-atrium-slices.gif" alt="Animated traversal of MRI slices showing left atrium segmentation contours and masks" width="49%" /></a>
+  <br/>
+  <sub><strong>Contours in motion.</strong> Left: left-ventricle contour evolution. Right: left atrium segmentation across MRI slices.</sub>
+</p>
+
+[Explore the imaging workflows →](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis)
+
+
+<p align="center">
+  <img src="./assets/signal-divider.svg" alt="" width="100%" />
+</p>
 
 ## From brain signals to intelligent systems
 
