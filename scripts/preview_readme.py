@@ -5,6 +5,7 @@ python -m http.server 8765 --bind 127.0.0.1
 Open http://127.0.0.1:8765/output/profile-preview.html
 """
 from pathlib import Path
+import re
 from markdown_it import MarkdownIt
 
 root = Path(__file__).resolve().parents[1]
@@ -13,6 +14,7 @@ body = MarkdownIt("commonmark", {"html": True}).enable("table").render(
 )
 body = body.replace('<h2>Selected projects</h2>', '<h2 id="selected-projects">Selected projects</h2>')
 body = body.replace('href="#', 'href="output/profile-preview.html#')
+body = re.sub(r'https://raw\.githubusercontent\.com/DavideStefanelli97/DavideStefanelli97/[0-9a-f]+/assets/profile-nameplate\.svg', './assets/profile-nameplate.svg', body)
 html = '''<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <base href="../"><title>Davide Stefanelli · Profile preview</title>

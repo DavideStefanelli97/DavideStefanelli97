@@ -85,6 +85,8 @@ The scientific renderer uses one fixed 3D pivot, orthographic scale, camera and 
 
 ## GitHub rendering and motion
 
+- The public README pins the banner URL to the commit containing the approved image, avoiding stale images served for the mutable `main` URL. After publishing a new banner asset, update this commit reference. The local preview maps it back to the working-copy SVG so design changes remain immediately visible.
+
 - GitHub removes scripts and page styles from README HTML. Animation lives inside the linked SVG image; the README itself uses ordinary Markdown and supported HTML. See [GitHub's rendering pipeline](https://github.com/github/markup).
 - The name stays visible throughout the animation. The SVG disables motion for `prefers-reduced-motion: reduce`; the existing GIFs do not respond to that preference.
 - The rotating brain uses a raster sprite sheet inside an SVG, not an embedded external GIF. SVG images cannot fetch external image resources in image context, but can use embedded data URLs: [MDN SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image). The complete banner is approximately 245 KB, versus 2.5 MB with the historical generated sheet; it keeps the existing animated vector lettering and avoids external requests.

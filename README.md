@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/profile-nameplate.svg?v=20260906-pixel-brain" alt="Davide Stefanelli — Computer Vision, Machine Learning and Biomedical Engineering" width="100%" />
+  <img src="https://raw.githubusercontent.com/DavideStefanelli97/DavideStefanelli97/0a9dae9ef1a4693f162e57ec4cfef990aa411db8/assets/profile-nameplate.svg" alt="Davide Stefanelli — Computer Vision, Machine Learning and Biomedical Engineering" width="100%" />
 </p>
 
 <p align="center">
