@@ -1,0 +1,9 @@
+{
+  "frames": 120,
+  "columns": 12,
+  "rows": 10,
+  "frame_pixels": 80,
+  "duration_seconds": 4.8,
+  "source": "FreeSurfer fsaverage pial surfaces, distributed by MNE",
+  "source_url": "https://mne.tools/stable/generated/mne.datasets.fetch_fsaverage.html"
+}
