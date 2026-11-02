@@ -2,22 +2,21 @@
   <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in colorful Dense ASCII letters, dropping and bouncing into place" width="100%" />
 </p>
 
-<p align="center"><sub>Animated lettering adapted from <a href="https://github.com/kailashsr38/ascii-magic-art/blob/main/pieces/bouncing-letters.js">Bouncing Letters</a> by ASCII Magic · <a href="./scripts/ASCII_MAGIC_LICENSE">MIT license</a></sub></p>
-
 <p align="center">
-  <strong>Computer Vision / ML Research Engineer · Biomedical Engineer</strong><br/>
-  Cesena, Italy · M.Sc. candidate, University of Bologna
+  <img src="./assets/terminal-intro.gif" alt="Davide Stefanelli: Computer Vision and ML Research Engineer; Biomedical Engineer; based in Cesena, Italy; M.Sc. candidate at the University of Bologna" width="100%" />
 </p>
 
 <table align="center" width="100%">
   <tr>
-    <td rowspan="3" width="60%" align="center" valign="middle">
+    <td width="60%" align="center" valign="middle">
       <img src="./assets/brain-turntable-ascii-palette.gif" alt="Rotating brain rendered as colorful ASCII art" width="100%" />
     </td>
-    <td width="40%" align="center"><a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-links/linkedin.gif" alt="LinkedIn — visit my professional profile" width="100%" /></a></td>
+    <td width="40%" align="center" valign="middle">
+      <a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-links/linkedin.gif" alt="LinkedIn — visit my professional profile" width="100%" /></a><br/>
+      <a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-links/email.gif" alt="Email — write to me about proposals and collaborations" width="100%" /></a><br/>
+      <a href="#selected-projects"><img src="./assets/ascii-links/projects.gif" alt="Projects — explore my selected research and work" width="100%" /></a>
+    </td>
   </tr>
-  <tr><td align="center"><a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-links/email.gif" alt="Email — write to me about proposals and collaborations" width="100%" /></a></td></tr>
-  <tr><td align="center"><a href="#selected-projects"><img src="./assets/ascii-links/projects.gif" alt="Projects — explore my selected research and work" width="100%" /></a></td></tr>
 </table>
 
 I build systems that turn images and neural signals into useful representations: **visual identity retrieval, EEG analysis, and medical-image processing**. My work connects model development with the tools needed to understand it—dataset curation, evaluation, failure analysis, and scientific visualization.

@@ -10,6 +10,8 @@ The profile uses a Dense ASCII animated GIF nameplate, native README content, an
   Approved source cortical surface animation used for the secondary research panel.
 - `davide-stefanelli-dense-ascii.gif`
   Active nameplate at the top of the profile README. The first frame shows the complete name, followed by the letter-drop loop.
+- `terminal-intro.gif`
+  Animated terminal introduction below the nameplate. Its first frame shows the full role and location text.
 - `profile-nameplate.svg`
   Previous SVG nameplate, retained for reference.
 - `brain-turntable.png`
@@ -63,6 +65,8 @@ The profile uses a Dense ASCII animated GIF nameplate, native README content, an
   Rendered by `scripts/render_ascii_brain.py` from `brain-turntable-stable.gif`. Each source frame is sampled into a 60×37 character grid; glyph density follows the original shading. The palette version recolors those glyphs with the nameplate colors while retaining the source luminance for cortical relief. Both are decorative derivatives of the fsaverage rendering described above.
 - `ascii-links/linkedin.gif`, `ascii-links/email.gif`, `ascii-links/projects.gif`
   Generated locally by `scripts/generate_ascii_link_cards.py` with Pillow and Windows Consolas. Each card has a 4.8-second ASCII border pulse, matching the brain GIF loop. No external art assets are used.
+- `terminal-intro.gif`
+  Generated locally by `scripts/generate_terminal_intro.py` with Pillow and Windows Consolas. It types the existing role, location, and education details as colored terminal output, inspired by the presentation of [Infra Plan and Apply](https://www.ascii-magic.com/ascii/infra-plan-diff); its code and frames are authored for this profile.
 - `brain-turntable.png`
   Created for this profile with the built-in ImageGen tool. Decorative stylized artwork, not an anatomical reference or project output. No Wikimedia source material was used for this new asset. The generation brief is saved in `assets/brain-turntable-prompt.txt`. The original PNG is preserved unchanged; the SVG crops frames at display time.
 - `head-mri-panel.gif`
@@ -96,6 +100,8 @@ To regenerate either ASCII brain variant on Windows with Pillow installed, run `
 
 To regenerate the contact cards, run `python scripts/generate_ascii_link_cards.py` on Windows with Pillow installed.
 
+To regenerate the terminal introduction, run `python scripts/generate_terminal_intro.py` on Windows with Pillow installed.
+
 The existing asset pipeline uses Pillow; the historical SVG nameplate is emitted with Python string generation only. No network access is required. To regenerate that SVG alone, run `python scripts/generate_nameplate.py`. The full generator delegates to the same implementation.
 
 To regenerate only the section separator, run `python scripts/generate_signal_divider.py`. It is also included in the full asset build.
@@ -114,6 +120,7 @@ The scientific renderer uses one fixed 3D pivot, orthographic scale, camera and 
 ## GitHub rendering and motion
 
 - GitHub removes scripts and page styles from README HTML. The Dense ASCII animation is an ordinary linked GIF image; the README itself uses supported HTML. See [GitHub's rendering pipeline](https://github.com/github/markup).
+- The contact table has one HTML row containing the brain and three linked images. Keeping all cards in the same cell avoids GitHub's alternating table-row background behind the Email card.
 - The GIF loops in 9.5 seconds. Its first frame shows the complete name. As with the other GIFs in the README, it cannot respond to `prefers-reduced-motion`.
 - The historical SVG nameplate uses a raster sprite sheet inside an SVG. SVG images cannot fetch external image resources in image context, but can use embedded data URLs: [MDN SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image).
 - MRI and cortical-surface GIFs are illustrative source material, not outputs produced by the featured repositories. Their source credits above remain applicable.
