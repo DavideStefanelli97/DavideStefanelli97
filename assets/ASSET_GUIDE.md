@@ -18,6 +18,10 @@ The profile uses a Dense ASCII animated GIF nameplate, native README content, an
   Active 12×10 sheet and playback metadata: 120 deterministic surface renders, each 80×80 pixels.
 - `brain-turntable-stable.gif`
   Standalone 320×320 nearest-neighbor GIF export of the same animation for review and reuse.
+- `brain-turntable-ascii-blue.gif`, `brain-turntable-ascii-palette.gif`
+  Two 480×481 ASCII GIF derivatives of the 120-frame brain turntable. The blue version preserves the approved first ASCII result; the second uses the green, orange, coral, violet, and gold colors of the Dense ASCII nameplate and is displayed beside the contact links in the README.
+- `ascii-links/linkedin.gif`, `ascii-links/email.gif`, `ascii-links/projects.gif`
+  Three independent animated ASCII link cards, displayed to the right of the brain in the README. The entire image of each card is a link.
 - `head-mri-panel.gif`
   Optimized display derivative for the primary MRI panel in the README hero.
 - `freesurfer-panel.gif`
@@ -55,6 +59,10 @@ The profile uses a Dense ASCII animated GIF nameplate, native README content, an
   Authored in `scripts/generate_nameplate.py`: pixel typography, cyan/lavender gradient, stepped light sweep, rotating pixel-art brain, and a decorative signal trace. `scripts/pixel_lettering.py` defines the name as custom 5×7 glyphs, drawn with 12-unit square pixels, top-edge highlights and a lavender offset shadow. The name is SVG path geometry, with no font dependency; the accessible SVG title preserves the full name. Supporting labels use Segoe UI / Helvetica / Arial and monospace fallbacks. `scripts/brain_sprite.py` embeds the active PNG sheet as a data URL and reads its dimensions and timing from the accompanying JSON: 120 cells in a 4.8-second CSS loop (25 fps). No external fonts, JavaScript, or runtime image services.
 - `brain-turntable-stable.png`, `brain-turntable-stable.gif`
   Rendered by `scripts/render_brain_turntable.py` from the left/right pial surfaces and sulcal maps of the standard FreeSurfer fsaverage template distributed by MNE. Source: [MNE fsaverage dataset](https://mne.tools/stable/generated/mne.datasets.fetch_fsaverage.html), [FreeSurfer](https://surfer.nmr.mgh.harvard.edu/). The local template previously downloaded for NeuroScope supplies the geometry; no individual participant data or ImageGen frames are used. The renderer applies a stylized blue/cyan palette; this is decorative anatomical visualization, not a result from a featured project.
+- `brain-turntable-ascii-blue.gif`, `brain-turntable-ascii-palette.gif`
+  Rendered by `scripts/render_ascii_brain.py` from `brain-turntable-stable.gif`. Each source frame is sampled into a 60×37 character grid; glyph density follows the original shading. The palette version recolors those glyphs with the nameplate colors while retaining the source luminance for cortical relief. Both are decorative derivatives of the fsaverage rendering described above.
+- `ascii-links/linkedin.gif`, `ascii-links/email.gif`, `ascii-links/projects.gif`
+  Generated locally by `scripts/generate_ascii_link_cards.py` with Pillow and Windows Consolas. Each card has a 4.8-second ASCII border pulse, matching the brain GIF loop. No external art assets are used.
 - `brain-turntable.png`
   Created for this profile with the built-in ImageGen tool. Decorative stylized artwork, not an anatomical reference or project output. No Wikimedia source material was used for this new asset. The generation brief is saved in `assets/brain-turntable-prompt.txt`. The original PNG is preserved unchanged; the SVG crops frames at display time.
 - `head-mri-panel.gif`
@@ -83,6 +91,10 @@ python scripts/generate_assets.py
 ```
 
 To regenerate the Dense ASCII nameplate, install Node.js and Pillow, then run `python scripts/export_dense_ascii_gif.py scripts/davide-stefanelli-dense-ascii.html` on Windows. The export takes its characters, colors, and motion directly from the approved preview. The rendering font is Windows Consolas.
+
+To regenerate either ASCII brain variant on Windows with Pillow installed, run `python scripts/render_ascii_brain.py --variant blue` or `python scripts/render_ascii_brain.py --variant palette`. These exports use the checked-in brain GIF and Windows Consolas; they do not need the FreeSurfer mesh files.
+
+To regenerate the contact cards, run `python scripts/generate_ascii_link_cards.py` on Windows with Pillow installed.
 
 The existing asset pipeline uses Pillow; the historical SVG nameplate is emitted with Python string generation only. No network access is required. To regenerate that SVG alone, run `python scripts/generate_nameplate.py`. The full generator delegates to the same implementation.
 

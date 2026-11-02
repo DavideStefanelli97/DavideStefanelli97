@@ -9,11 +9,16 @@
   Cesena, Italy · M.Sc. candidate, University of Bologna
 </p>
 
-<p align="center">
-  <a href="https://www.linkedin.com/in/davide-stefanelli-engineer/">LinkedIn</a> &nbsp; / &nbsp;
-  <a href="mailto:davide.stefanelli.ing@gmail.com">Email</a> &nbsp; / &nbsp;
-  <a href="#selected-projects">Explore my work ↓</a>
-</p>
+<table align="center" width="100%">
+  <tr>
+    <td rowspan="3" width="60%" align="center" valign="middle">
+      <img src="./assets/brain-turntable-ascii-palette.gif" alt="Rotating brain rendered as colorful ASCII art" width="100%" />
+    </td>
+    <td width="40%" align="center"><a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-links/linkedin.gif" alt="LinkedIn — visit my professional profile" width="100%" /></a></td>
+  </tr>
+  <tr><td align="center"><a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-links/email.gif" alt="Email — write to me about proposals and collaborations" width="100%" /></a></td></tr>
+  <tr><td align="center"><a href="#selected-projects"><img src="./assets/ascii-links/projects.gif" alt="Projects — explore my selected research and work" width="100%" /></a></td></tr>
+</table>
 
 I build systems that turn images and neural signals into useful representations: **visual identity retrieval, EEG analysis, and medical-image processing**. My work connects model development with the tools needed to understand it—dataset curation, evaluation, failure analysis, and scientific visualization.
 
