@@ -1,6 +1,8 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/DavideStefanelli97/DavideStefanelli97/0a9dae9ef1a4693f162e57ec4cfef990aa411db8/assets/profile-nameplate.svg" alt="Davide Stefanelli — Computer Vision, Machine Learning and Biomedical Engineering" width="100%" />
+  <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in colorful Dense ASCII letters, dropping and bouncing into place" width="100%" />
 </p>
+
+<p align="center"><sub>Animated lettering adapted from <a href="https://github.com/kailashsr38/ascii-magic-art/blob/main/pieces/bouncing-letters.js">Bouncing Letters</a> by ASCII Magic · <a href="./scripts/ASCII_MAGIC_LICENSE">MIT license</a></sub></p>
 
 <p align="center">
   <strong>Computer Vision / ML Research Engineer · Biomedical Engineer</strong><br/>

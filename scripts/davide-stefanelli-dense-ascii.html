@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DAVIDE STEFANELLI — Dense ASCII</title>
+<style>
+  body { margin:0; background:#0d1117; color:#e6edf3; font-family:system-ui,sans-serif; }
+  main { max-width:1200px; margin:24px auto; padding:0 16px; }
+  h1 {font-size:1.35rem;}
+  canvas {display:block; max-width:100%; height:auto; background:#0d1117; border:1px solid #30363d;}
+  button {background:#21262d; color:#e6edf3; border:1px solid #8b949e; border-radius:5px; padding:9px 13px; margin:14px 8px 0 0; cursor:pointer;}
+  button:hover {background:#30363d;}
+  p {color:#8b949e;}
+</style></head><body><main>
+<h1>DAVIDE STEFANELLI</h1><canvas id="stage" aria-label="Animazione Dense ASCII"></canvas>
+<button id="png">Scarica fotogramma PNG</button><button id="video">Registra e scarica animazione WebM</button>
+<p id="status">Look: Dense ASCII · 30 fps</p>
+</main><script>
+const Kit = (() => {
+/*
+ * kit.js: the small toolbox every piece is built from. No dependencies, runs
+ * the same in a browser and in Node.
+ *
+ * A piece draws into a Grid and returns grid.frame(). A Grid holds one
+ * character and one colour key per cell. Colour keys are single characters
+ * that index the piece's meta.palette; a space means "default ink".
+ */
+
+const RAMPS = {
+  classic: " .:-=+*#%@",
+  fine: " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  dots: " .·•●",
+  blocks: " ░▒▓█",
+  soft: " .,-~:;=!*#$@",
+  lines: " -=≡",
+};
+
+/** Map 0..1 to a character of a ramp. */
+function ramp(v, chars = RAMPS.classic) {
+  const i = Math.max(0, Math.min(chars.length - 1, Math.floor(v * chars.length)));
+  return chars[i];
+}
+
+const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (t) => t * t * (3 - 2 * t);
+const fract = (v) => v - Math.floor(v);
+const TAU = Math.PI * 2;
+
+/** Deterministic PRNG (mulberry32). Same seed, same art on every load. */
+function rng(seed = 1) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ── noise ──────────────────────────────────────────────────────────── */
+function hash2(x, y, s) {
+  let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+/** 2D value noise in 0..1. */
+function noise2(x, y, seed = 0) {
+  const xi = Math.floor(x), yi = Math.floor(y);
+  const xf = smooth(x - xi), yf = smooth(y - yi);
+  const a = hash2(xi, yi, seed), b = hash2(xi + 1, yi, seed);
+  const c = hash2(xi, yi + 1, seed), d = hash2(xi + 1, yi + 1, seed);
+  return lerp(lerp(a, b, xf), lerp(c, d, xf), yf);
+}
+/** Fractal noise, a few octaves of noise2, in 0..1. */
+function fbm(x, y, octaves = 4, seed = 0) {
+  let v = 0, amp = 0.5, f = 1, norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    v += amp * noise2(x * f, y * f, seed + i * 17);
+    norm += amp; amp *= 0.5; f *= 2;
+  }
+  return v / norm;
+}
+
+/* ── colour ─────────────────────────────────────────────────────────── */
+function hsl(h, s, l) {
+  h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const x = (v) => Math.round(v * 255).toString(16).padStart(2, "0");
+  return "#" + x(f(0)) + x(f(8)) + x(f(4));
+}
+/** Build a palette object from a list of hex colours: keys "0".."9","a".."z". */
+const KEYS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function palette(hexes) {
+  const p = {};
+  hexes.forEach((h, i) => (p[KEYS[i]] = h));
+  return p;
+}
+/** A gradient palette of n steps between colour stops, for shading by value. */
+function gradient(stops, n = 10) {
+  const toRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const rgb = stops.map(toRgb);
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i / (n - 1)) * (rgb.length - 1);
+    const j = Math.min(rgb.length - 2, Math.floor(t)), f = t - j;
+    const c = rgb[j].map((v, k) => Math.round(lerp(v, rgb[j + 1][k], f)));
+    out.push("#" + c.map((v) => v.toString(16).padStart(2, "0")).join(""));
+  }
+  return out;
+}
+
+/* ── the grid ───────────────────────────────────────────────────────── */
+class Grid {
+  constructor(cols, rows) {
+    this.cols = cols; this.rows = rows;
+    this.ch = new Array(cols * rows).fill(" ");
+    this.co = new Array(cols * rows).fill(" ");
+    this.z = new Float32Array(cols * rows);
+  }
+  clear(ch = " ", co = " ") { this.ch.fill(ch); this.co.fill(co); this.z.fill(-Infinity); return this; }
+  inside(x, y) { return x >= 0 && y >= 0 && x < this.cols && y < this.rows; }
+  /** Put a character (and optional colour key) at integer x,y. */
+  set(x, y, ch, co) {
+    x = Math.floor(x); y = Math.floor(y);
+    if (!this.inside(x, y)) return;
+    const i = x + y * this.cols;
+    this.ch[i] = ch; if (co !== undefined) this.co[i] = co;
+  }
+  /** Depth-tested put: only draws when z is nearer (larger) than what is there. */
+  setZ(x, y, z, ch, co) {
+    x = Math.floor(x); y = Math.floor(y);
+    if (!this.inside(x, y)) return;
+    const i = x + y * this.cols;
+    if (z <= this.z[i]) return;
+    this.z[i] = z; this.ch[i] = ch; if (co !== undefined) this.co[i] = co;
+  }
+  get(x, y) { return this.inside(x, y) ? this.ch[Math.floor(x) + Math.floor(y) * this.cols] : " "; }
+  /** Write a string left to right. */
+  text(x, y, s, co) { for (let i = 0; i < s.length; i++) this.set(x + i, y, s[i], co); }
+  /** Write a multi-line block (lines split on \n). Spaces are transparent unless solid. */
+  block(x, y, s, co, solid = false) {
+    s.split("\n").forEach((line, r) => {
+      for (let i = 0; i < line.length; i++) if (solid || line[i] !== " ") this.set(x + i, y + r, line[i], co);
+    });
+  }
+  hline(x0, x1, y, ch = "─", co) { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) this.set(x, y, ch, co); }
+  vline(x, y0, y1, ch = "│", co) { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1); y++) this.set(x, y, ch, co); }
+  /** Box with light, heavy, double or round corners. */
+  box(x, y, w, h, style = "light", co) {
+    const S = {
+      light: "┌┐└┘─│", heavy: "┏┓┗┛━┃", double: "╔╗╚╝═║", round: "╭╮╰╯─│", ascii: "++++-|",
+    }[style] || style;
+    this.hline(x + 1, x + w - 2, y, S[4], co); this.hline(x + 1, x + w - 2, y + h - 1, S[4], co);
+    this.vline(x, y + 1, y + h - 2, S[5], co); this.vline(x + w - 1, y + 1, y + h - 2, S[5], co);
+    this.set(x, y, S[0], co); this.set(x + w - 1, y, S[1], co);
+    this.set(x, y + h - 1, S[2], co); this.set(x + w - 1, y + h - 1, S[3], co);
+  }
+  fill(x, y, w, h, ch = " ", co) { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) this.set(x + i, y + j, ch, co); }
+  /** Bresenham line. */
+  line(x0, y0, x1, y1, ch = "*", co) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let e = dx + dy;
+    for (let n = 0; n < 4000; n++) {
+      this.set(x0, y0, typeof ch === "function" ? ch(x0, y0) : ch, co);
+      if (x0 === x1 && y0 === y1) break;
+      const e2 = 2 * e;
+      if (e2 >= dy) { e += dy; x0 += sx; }
+      if (e2 <= dx) { e += dx; y0 += sy; }
+    }
+  }
+  /** Ellipse outline, corrected for tall cells when aspect=0.5. */
+  circle(cx, cy, r, ch = "o", co, aspect = 0.5) {
+    const n = Math.max(12, Math.ceil(r * 8));
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * TAU;
+      this.set(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r * aspect), ch, co);
+    }
+  }
+  /** Call fn(x, y, u, v) for every cell; u,v in 0..1. Write via the return value [ch, co]. */
+  shade(fn) {
+    for (let y = 0; y < this.rows; y++) for (let x = 0; x < this.cols; x++) {
+      const r = fn(x, y, x / (this.cols - 1), y / (this.rows - 1));
+      if (r) this.set(x, y, r[0], r[1]);
+    }
+  }
+  /** The frame a piece returns: plain text when no colours were used, else {text, color}. */
+  frame() {
+    const lines = [], cl = [];
+    let colored = false;
+    for (let y = 0; y < this.rows; y++) {
+      lines.push(this.ch.slice(y * this.cols, (y + 1) * this.cols).join(""));
+      const c = this.co.slice(y * this.cols, (y + 1) * this.cols).join("");
+      if (!colored && c.trim()) colored = true;
+      cl.push(c);
+    }
+    return colored ? { text: lines.join("\n"), color: cl.join("\n") } : lines.join("\n");
+  }
+}
+
+/* ── 3D ─────────────────────────────────────────────────────────────── */
+function rotX([x, y, z], a) { const c = Math.cos(a), s = Math.sin(a); return [x, y * c - z * s, y * s + z * c]; }
+function rotY([x, y, z], a) { const c = Math.cos(a), s = Math.sin(a); return [x * c + z * s, y, -x * s + z * c]; }
+function rotZ([x, y, z], a) { const c = Math.cos(a), s = Math.sin(a); return [x * c - y * s, x * s + y * c, z]; }
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const norm = (v) => { const l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; };
+/** Perspective-project a point to grid coords. Cells are ~2x taller than wide. */
+function project([x, y, z], cols, rows, fov = 1.6, dist = 4) {
+  const k = fov / (z + dist);
+  const s = Math.min(cols * 0.5, rows);
+  return [cols / 2 + x * k * s, rows / 2 - y * k * s * 0.5, k];
+}
+/** Draw a wireframe from vertices + edge index pairs. */
+function wire(g, verts, edges, ch = "·", co) {
+  for (const [a, b] of edges) g.line(verts[a][0], verts[a][1], verts[b][0], verts[b][1], ch, co);
+}
+
+/* ── small text font (3x5) for numbers and short labels ─────────────── */
+const F3 = {
+  "0": "███│█ █│█ █│█ █│███", "1": " █ │██ │ █ │ █ │███", "2": "███│  █│███│█  │███",
+  "3": "███│  █│███│  █│███", "4": "█ █│█ █│███│  █│  █", "5": "███│█  │███│  █│███",
+  "6": "███│█  │███│█ █│███", "7": "███│  █│  █│  █│  █", "8": "███│█ █│███│█ █│███",
+  "9": "███│█ █│███│  █│███", ":": "   │ █ │   │ █ │   ", " ": "   │   │   │   │   ",
+  "-": "   │   │███│   │   ", ".": "   │   │   │   │ █ ", "%": "█ █│  █│ █ │█  │█ █",
+};
+/** Draw digits in a 3x5 block font. Returns the width used. */
+function bigText(g, x, y, s, co, on = "█") {
+  let cx = x;
+  for (const c of String(s)) {
+    const glyph = F3[c] || F3[" "];
+    glyph.split("│").forEach((row, r) => { for (let i = 0; i < 3; i++) if (row[i] !== " ") g.set(cx + i, y + r, on, co); });
+    cx += 4;
+  }
+  return cx - x;
+}
+
+
+return { Grid, palette };
+})();
+const Glyphs = (() => {
+/*
+ * glyphs.js: redraw any piece in a different set of characters, its "look".
+ * Each cell's darkness = how much ink its glyph covers x how bright its colour
+ * is; the look's characters are sorted light to dark and the nearest one wins.
+ * Works in the browser and in Node, no DOM.
+ *
+ *   import { restyle } from "./glyphs.js";
+ *   const frame2 = restyle(frame, meta.palette, { look: "dots" });
+ */
+
+// Ink coverage (0..100) of each safe glyph in Menlo, measured once in a canvas.
+// Packed as glyph + one char code: coverage = (code - 48) / 0.74.
+const PACKED = "0L1@2C3D4E5E6H7?8J9H!9\":#I$G%F&H'5(<)<*@+<,7-7.5/<:8;:<===>=?=@NAFBKCADIEFFCGFHHIBJ@KHL?MMNNOHPEQJRISET@UFVDWLXEY@ZE[=\\<]>^:_7`2aDbGc=dGeCf@gIhDi>j@kDl=mFnAoBpGqFr;s@t?uAv?wDx@yCz?{@|=}@~:─7━=│=┃G┄6┅:┆;┇E┈5┉9┊:┋C┌:┍=┎@┏C┐:┑=┒@┓C└:┕=┖?┗A┘:┙=┚?┛A├@┝C┞E┟E┠J┡G┢H┣L┤@┥C┦E┧E┨J┩G┪H┫L┬>┭@┮@┯C┰C┱E┲E┳H┴=┵@┶@┷B┸A┹D┺D┻F┼C┽E┾E┿H╀H╁H╂M╃J╄J╅K╆K╇K╈M╉N╊N╋Q╌7╍<╎;╏D═?║I╒?╓B╔E╕?╖B╗E╘=╙@╚C╛=╜@╝C╞C╟K╠M╡C╢K╣M╤D╥D╦H╧C╨B╩F╪I╫N╬Q╭:╮:╯9╰9╱>╲>╳K╴4╵6╶4╷7╸7╹;╺7╻=╼:╽C╾:╿B▀V▁:▂C▃L▄V▅_▆h▇q█z▉s▊j▋`▌V▍M▎C▏9▐V░C▒[▓p▔:▕9▖C▗C▘C▙h▚V▛h▜h▝C▞V▟h·3•9●T○@◦5■\\□C▪C▫<◆H◇?▲H△?▼H▽@◀G▶G►@◄@≈=≡C°7✓8✗@♥N×=÷;±A→9←9↑9↓:↗:↘:↙:↖:";
+const COVER = { " ": 0 };
+for (let i = 0; i < PACKED.length; i += 2) COVER[PACKED[i]] = (PACKED.charCodeAt(i + 1) - 48) / 0.74;
+// Shade blocks are drawn as their nominal density rather than their measured ink.
+Object.assign(COVER, { "░": 25, "▒": 50, "▓": 75, "█": 100 });
+const cover = (ch) => {
+  if (ch in COVER) return COVER[ch];
+  const c = ch.codePointAt(0);
+  if (c >= 0x2800 && c <= 0x28ff) { let n = 0, b = c - 0x2800; while (b) { n += b & 1; b >>= 1; } return n * 7; }
+  return 30;
+};
+
+/** The looks offered everywhere. chars run from light to dark once sorted. */
+const LOOKS = {
+  original: { label: "Original", chars: null },
+  dots: { label: "Halftone dots", chars: " ·•●" },
+  ascii: { label: "ASCII", chars: " .,-~:;=!*#$@" },
+  dense: { label: "Dense ASCII", chars: " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$" },
+  numbers: { label: "Numbers", chars: " 1723456980" },
+  binary: { label: "Binary", chars: " 01" },
+  letters: { label: "Letters", chars: " ilcoeaxkdbAHMW" },
+  blocks: { label: "Blocks", chars: " ░▒▓█" },
+  squares: { label: "Squares", chars: " ·▪■" },
+  lines: { label: "Lines", chars: " ╌─━═" },
+  // On canvas: square pixels switched on and off by an 8x8 Bayer pattern. As text
+  // (terminal, Copy as text): the same ordered dither in full blocks and spaces.
+  dither: { label: "Dither", chars: " █", sample: "▚▞▚▞" },
+};
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+const ditherCh = (d, x, y) => (d > (BAYER4[(y & 3) * 4 + (x & 3)] + 0.5) / 16 ? "█" : " ");
+
+const rampCache = new Map();
+/** Sort a string of characters by ink, light to dark, keeping a leading space. */
+function ramp(chars) {
+  if (rampCache.has(chars)) return rampCache.get(chars);
+  const uniq = [...new Set([...chars])].filter((c) => c !== "\n" && c !== "\t");
+  const r = uniq.sort((a, b) => cover(a) - cover(b));
+  if (r[0] !== " ") r.unshift(" ");
+  rampCache.set(chars, r);
+  return r;
+}
+
+const lumCache = new Map();
+const lum = (hex) => {
+  if (!hex) return 0.88;
+  if (lumCache.has(hex)) return lumCache.get(hex);
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  lumCache.set(hex, L);
+  return L;
+};
+// In a look, size carries the shading, so colours are lifted to stay visible.
+const liftCache = new Map();
+function lift(palette) {
+  if (!palette) return palette;
+  if (liftCache.has(palette)) return liftCache.get(palette);
+  const out = {};
+  for (const [k, hex] of Object.entries(palette)) {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
+    const sat = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+    let h = 0;
+    if (d) h = mx === r ? ((g - b) / d + 6) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    const L = Math.max(l, 0.2 + 0.5 * Math.sqrt(l)), C = (1 - Math.abs(2 * L - 1)) * sat, X = C * (1 - Math.abs((h % 2) - 1)), m = L - C / 2;
+    const [R, G, B] = h < 1 ? [C, X, 0] : h < 2 ? [X, C, 0] : h < 3 ? [0, C, X] : h < 4 ? [0, X, C] : h < 5 ? [X, 0, C] : [C, 0, X];
+    out[k] = "#" + [R, G, B].map((v) => Math.round((v + m) * 255).toString(16).padStart(2, "0")).join("");
+  }
+  liftCache.set(palette, out);
+  return out;
+}
+const isShade = (c) => c >= 0x2580 && c <= 0x259f;
+
+/**
+ * Redraw a frame in a look. opts: look (a LOOKS key), chars (custom set, wins
+ * over look), all (map every glyph, not just shading blocks), mono (drop colour),
+ * gamma (contrast: below 1 lifts darks, above 1 deepens them; default 0.75),
+ * lift (false keeps the original colours; by default they are brightened, and
+ * the frame carries its own palette).
+ */
+/**
+ * Darkness of every cell, 0..1 after stretching to the frame's own range, or
+ * -1 for a cell a look leaves alone (blank, or text/line work unless all).
+ * Returns { T, C, D, w, h } with T/C as arrays of rows of characters.
+ */
+// ASCII ramp punctuation. A frame drawn almost only in these, with next to no letters,
+// is a shaded render (a spinning torus, a plasma), so its punctuation is shading too.
+const RAMP_PUNCT = new Set(".,:;-~=+*!#%@$&");
+function rampShaded(T) {
+  let ink = 0, ramp = 0, alnum = 0;
+  for (const row of T) for (const ch of row) {
+    if (ch === " ") continue;
+    ink++;
+    if (RAMP_PUNCT.has(ch)) ramp++;
+    else { const c = ch.charCodeAt(0); if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) alnum++; }
+  }
+  return ink > 0 && ramp >= ink * 0.5 && alnum < ink * 0.05;
+}
+/** Which characters of this frame a look redraws: shading blocks, plus ramp punctuation in shaded renders. */
+function shadeTester(T) {
+  const rs = rampShaded(T);
+  return (ch) => isShade(ch.codePointAt(0)) || (rs && RAMP_PUNCT.has(ch));
+}
+
+function densityGrid(frame, palette, opts = {}) {
+  const str = typeof frame === "string";
+  const T = (str ? frame : frame.text).split("\n").map((r) => [...r]);
+  const C = str ? null : frame.color.split("\n").map((r) => [...r]);
+  const shade = opts.all ? null : shadeTester(T);
+  const D = T.map((row, y) => row.map((ch, x) => {
+    if (ch === " " || (!opts.all && !shade(ch))) return -1;
+    const k = C && C[y][x];
+    return (cover(ch) / 100) * lum(k && k !== " " && palette ? palette[k] : null);
+  }));
+  let max = 0, min = Infinity;
+  for (const row of D) for (const d of row) { if (d > max) max = d; if (d >= 0.004 && d < min) min = d; }
+  const span = max - min > 0.05 ? max - min : max, lo = max - min > 0.05 ? min : 0, gamma = opts.gamma ?? 0.35;
+  for (const row of D) for (let x = 0; x < row.length; x++) {
+    const d = row[x];
+    if (d < 0) continue;
+    row[x] = d < 0.004 || !span ? 0 : Math.max(0.0001, Math.pow(Math.max(0, d - lo) / span, gamma));
+  }
+  return { T, C, D, w: T[0] ? T[0].length : 0, h: T.length };
+}
+
+function restyle(frame, palette, opts = {}) {
+  const chars = opts.chars || (LOOKS[opts.look] || LOOKS.original).chars;
+  const str = typeof frame === "string";
+  if (!chars) return opts.mono && !str ? frame.text : frame;
+  const R = ramp(chars), n = R.length - 1;
+  if (opts.look === "dither" && !opts.chars) opts = { ...opts, all: true }; // dither covers line art and text too, as on canvas
+  if (opts.merge > 1 && !str) return restyleMerged(frame, palette, opts, R, opts.merge);
+  const { T, D } = densityGrid(frame, palette, opts);
+  // every inked cell gets at least the lightest glyph, like a halftone screen
+  const dither = opts.look === "dither" && !opts.chars;
+  const out = T.map((row, y) => row.map((ch, x) => {
+    const d = D[y][x];
+    return d < 0 ? ch : d === 0 ? " " : dither ? ditherCh(d, x, y) : R[1 + Math.min(n - 1, Math.floor(d * n))];
+  }).join("")).join("\n");
+  return str || opts.mono ? out : { text: out, color: frame.color, palette: opts.lift === false ? palette : lift(palette) };
+}
+
+/**
+ * The same look on a coarser grid: every k x k block of cells becomes one character
+ * (mean darkness, colour of its darkest-inked cell). Pictures with tiny cells use it so
+ * a thumbnail draws a few thousand legible glyphs instead of 20,000 unreadable ones.
+ */
+function restyleMerged(frame, palette, opts, R, k) {
+  const n = R.length - 1, { T, C, D, w, h } = densityGrid(frame, palette, opts);
+  const W = Math.ceil(w / k), H = Math.ceil(h / k), text = [], color = [];
+  for (let by = 0; by < H; by++) {
+    let tr = "", cr = "";
+    for (let bx = 0; bx < W; bx++) {
+      let sum = 0, cnt = 0, best = -1, key = " ", keep = null;
+      for (let y = by * k; y < Math.min(h, by * k + k); y++) for (let x = bx * k; x < Math.min(w, bx * k + k); x++) {
+        const d = D[y][x];
+        if (d < 0) { if (T[y][x] !== " " && keep === null) keep = [T[y][x], C ? C[y][x] : " "]; continue; }
+        sum += d; cnt++;
+        if (d > best) { best = d; key = C ? C[y][x] : " "; }
+      }
+      if (!cnt && keep) { tr += keep[0]; cr += keep[1]; continue; }
+      const d = cnt ? sum / cnt : 0;
+      tr += d === 0 ? " " : opts.look === "dither" && !opts.chars ? ditherCh(d, bx, by) : R[1 + Math.min(n - 1, Math.floor(d * n))];
+      cr += key;
+    }
+    text.push(tr); color.push(cr);
+  }
+  const out = text.join("\n");
+  return opts.mono ? out : { text: out, color: color.join("\n"), palette: opts.lift === false ? palette : lift(palette) };
+}
+
+
+/** Wrap a piece's draw function so every frame comes out in a look. */
+function withLook(draw, palette, opts) {
+  if (!opts || (!opts.chars && (!opts.look || opts.look === "original") && !opts.mono)) return draw;
+  return (t) => restyle(draw(t), palette, opts);
+}
+
+
+return { densityGrid, lift, LOOKS, restyle, cover, isShade, shadeTester };
+})();
+const CanvasRuntime = (() => {
+const { densityGrid, lift, LOOKS, restyle, cover, isShade, shadeTester } = Glyphs;
+/*
+ * canvas.js: draw a piece's frame onto a canvas. Used for the halftone looks
+ * (true circles and squares sized by each cell's darkness), for square-cell
+ * pieces, and for image, wallpaper, thumbnail, GIF and video exports.
+ */
+
+
+const FONT = 'Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace';
+/** Width of one monospace cell as a fraction of the font size. */
+const CELL_W = 0.602;
+
+/** Cell height / width: 1 for square-cell pieces, about 1.66 for text pieces. */
+const cellAspect = (meta) => (meta && meta.cell === "square" ? 1 : 1 / CELL_W);
+
+/** Canvas-drawn looks. Anything else is drawn as text. */
+const SHAPE_LOOKS = { dots: "circle", squares: "square", dither: "dither" };
+
+/** Which way a piece is drawn for a look: "circle", "square" or "text". */
+function renderMode(meta, look = {}) {
+  if (look.chars) return "text";
+  const k = !look.look || look.look === "original" ? (meta && meta.look) || "original" : look.look;
+  return SHAPE_LOOKS[k] || "text";
+}
+
+/** Old helper kept for callers that size by font: [cell width, cell height]. */
+function cellSize(ctx, px, aspect = 1 / CELL_W) {
+  return [px * CELL_W, px * CELL_W * aspect];
+}
+
+/**
+ * Draw one frame with its top-left at x, y and cells cw x ch pixels.
+ * opts: ink, mode ("text" | "circle" | "square"), size (largest dot as a
+ * share of the cell, default 0.85), steps (0 = smooth sizes, n = n sizes,
+ * default 3), invert (on light paper: dark areas get the big dots, as in
+ * print), plus look options for the density (all, gamma, mono).
+ */
+// Players read the ink from CSS ("rgb(228, 228, 231)"); the pixel painters need "#rrggbb".
+const hexCache = new Map();
+function toHex(c) {
+  if (!c || (c[0] === "#" && c.length === 7)) return c;
+  let h = hexCache.get(c);
+  if (h) return h;
+  if (c[0] === "#" && c.length === 4) h = "#" + [1, 2, 3].map((i) => c[i] + c[i]).join("");
+  else { const m = c.match(/\d+(\.\d+)?/g); h = m && m.length >= 3 ? "#" + m.slice(0, 3).map((v) => Math.max(0, Math.min(255, Math.round(+v))).toString(16).padStart(2, "0")).join("") : "#e4e4e7"; }
+  hexCache.set(c, h);
+  return h;
+}
+
+function paint(ctx, frame, palette, opts) {
+  if (opts.ink && !(opts.ink[0] === "#" && opts.ink.length === 7)) opts = { ...opts, ink: toHex(opts.ink) };
+  const { x = 0, y = 0, cw, ch, ink = "#e4e4e7", mode = "text", size = 0.85, steps = 3 } = opts;
+  if (frame.palette) palette = frame.palette;
+  if (mode === "text") return paintText(ctx, frame, palette, x, y, cw, ch, ink, opts.atlas, opts.dpr);
+  if (mode === "dither") return cw === ch ? paintTone(ctx, frame, palette, { ...opts, dither: true }) : paintDitherImage(ctx, frame, palette, opts);
+  if (!opts.invert && mode === "circle") return paintTone(ctx, frame, palette, opts);
+  // A steeper curve than the text looks: mid-tones stay small, only light grows.
+  const { T, C, D } = densityGrid(frame, palette, { ...opts, gamma: (opts.gamma ?? 0.75) * (opts.dotCurve ?? 1.9) });
+  const minDot = opts.dotMin ?? 0.22;
+  const inv = !!opts.invert, pal = opts.mono ? null : inv || opts.lift === false ? palette : lift(palette);
+  // Tall text cells hold two or more dots so the screen stays square.
+  const sub = Math.max(1, Math.round(ch / cw)), sh = ch / sub;
+  const unit = Math.min(cw, sh), paths = new Map();
+  const pathFor = (k) => {
+    const col = (k && k !== " " && pal && pal[k]) || ink;
+    let p = paths.get(col); if (!p) { p = new Path2D(); paths.set(col, p); }
+    return p;
+  };
+  const text = [];
+  for (let r = 0; r < T.length; r++) {
+    const row = T[r], dr = D[r];
+    for (let c = 0; c < row.length; c++) {
+      const d = dr[c];
+      if (d < 0) { if (row[c] !== " ") text.push([r, c]); continue; }
+      if (d === 0 && !inv) continue;
+      const p = pathFor(C && C[r][c]);
+      const v0 = inv ? 1 - d : d, v = steps ? Math.ceil(v0 * steps) / steps : v0;
+      if (inv && v0 < 0.06) continue; // white stays paper
+      const half = 0.5 * unit * size * (minDot + (1 - minDot) * v); // smallest dot stays visible
+      if (half < 0.15) continue;
+      for (let s = 0; s < sub; s++) {
+        const cx = x + (c + 0.5) * cw, cy = y + r * ch + (s + 0.5) * sh;
+        if (mode === "circle") { p.moveTo(cx + half, cy); p.arc(cx, cy, half, 0, Math.PI * 2); }
+        else p.rect(cx - half, cy - half, half * 2, half * 2);
+      }
+    }
+  }
+  // backing: a faint wash of each cell's own colour behind its dot, so a
+  // halftone of a bright photo keeps its light instead of going muddy.
+  if (opts.backing && !inv) {
+    ctx.globalAlpha = opts.backing;
+    for (let r = 0; r < T.length; r++) for (let c = 0; c < T[r].length; c++) {
+      if (D[r][c] <= 0) continue;
+      const k = C && C[r][c]; ctx.fillStyle = (k && k !== " " && pal && pal[k]) || ink;
+      ctx.fillRect(x + c * cw, y + r * ch, cw + 0.5, ch + 0.5);
+    }
+    ctx.globalAlpha = 1;
+  }
+  for (const [col, p] of paths) { ctx.fillStyle = opts.boost ? boostHex(col, opts.boost) : col; ctx.fill(p); }
+  // Text and line work a look leaves alone are still drawn as characters.
+  if (text.length) {
+    ctx.font = `${cw / CELL_W}px ${FONT}`; ctx.textBaseline = "middle";
+    for (const [r, c] of text) {
+      const k = C && C[r][c];
+      ctx.fillStyle = (!opts.mono && k && k !== " " && palette && palette[k]) || ink;
+      ctx.fillText(T[r][c], x + c * cw, y + (r + 0.5) * ch);
+    }
+  }
+}
+
+/**
+ * Glyph atlas: each glyph in each colour is drawn once into an offscreen tile
+ * and then stamped with drawImage, which is many times cheaper than fillText.
+ * One atlas per player; it resets itself when the cell size changes.
+ */
+class GlyphAtlas {
+  constructor() { this.key = ""; this.map = new Map(); }
+  reset(cw, ch, dpr) {
+    this.tw = Math.max(1, Math.ceil(cw * dpr)); this.th = Math.max(1, Math.ceil(ch * dpr));
+    this.cols = Math.max(1, Math.floor(2048 / this.tw)); this.n = 0; this.map.clear();
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = this.cols * this.tw; this.canvas.height = this.th * 8;
+    this.ctx = this.canvas.getContext("2d");
+    this.font = `${(cw / CELL_W) * dpr}px ${FONT}`;
+  }
+  tile(g, col) {
+    const k = g + col;
+    let t = this.map.get(k);
+    if (t) return t;
+    const i = this.n++, sx = (i % this.cols) * this.tw, sy = Math.floor(i / this.cols) * this.th;
+    if (sy + this.th > this.canvas.height) { // grow, keeping what is drawn
+      const old = this.canvas; this.canvas = document.createElement("canvas");
+      this.canvas.width = old.width; this.canvas.height = old.height * 2;
+      this.ctx = this.canvas.getContext("2d"); this.ctx.drawImage(old, 0, 0);
+    }
+    const c = this.ctx;
+    c.save(); c.beginPath(); c.rect(sx, sy, this.tw, this.th); c.clip();
+    c.font = this.font; c.textBaseline = "middle"; c.fillStyle = col;
+    c.fillText(g, sx, sy + this.th / 2); c.restore();
+    t = [sx, sy]; this.map.set(k, t);
+    return t;
+  }
+}
+
+/**
+ * True-tone halftone: each dot's AREA is the cell's brightness (glyph ink x
+ * colour light), over the full range from a speck to a full cell, and every dot
+ * keeps a bright version of its colour. Shadows are dark because their dots are
+ * small, not because they are muddy, which is how printed halftone reads.
+ * tone: { gamma (0.9), floor (smallest dot, 0.06), sat (colour lift, 0.85) }
+ */
+const LV = { "▁": 0.135, "▂": 0.257, "▃": 0.378, "▄": 0.51, "▅": 0.635, "▆": 0.757, "▇": 0.878, "█": 1 };
+const brightCache = new Map();
+function brighten(h, k) {
+  const key = h + k; let o = brightCache.get(key); if (o) return o;
+  const v = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), mx = Math.max(...v, 1);
+  const f = (255 / mx) * k + (1 - k); // k=1: max channel to 255, hue kept
+  o = "#" + v.map((c) => Math.round(Math.min(255, c * f)).toString(16).padStart(2, "0")).join("");
+  brightCache.set(key, o); return o;
+}
+function paintTone(ctx, frame, palette, opts) {
+  const { x = 0, y = 0, cw, ch, tone = {} } = opts, size = (opts.size ?? 0.51) / 0.85; // 0.85 = a full-cell dot
+  const density = Math.max(0.3, opts.density ?? 1.31); // dots per cell along each side; spacing only, not dot size
+  const dpr = opts.dpr || 1;
+  // Contrast (gamma 0.35 = 0%, up to 1.15 = 100%) steepens the tone curve: at 100% the shadows
+  // lose their dots and only the light keeps them. 0% leaves the curve exactly as it was.
+  const lo = tone.lo ?? 0.04, hi = tone.hi ?? 0.985, g = (tone.curve ?? 1.1) * Math.max(1, (opts.gamma ?? 0.35) / 0.35), sat = tone.sat ?? 0.85;
+  const T = (typeof frame === "string" ? frame : frame.text).split("\n").map((r) => [...r]);
+  const C = typeof frame === "string" || !frame.color ? null : frame.color.split("\n").map((r) => [...r]);
+  const rows = T.length, cols = T[0] ? T[0].length : 0;
+  const lum = new Map();
+  const L = (h) => { if (!h) return 0.88; let v = lum.get(h); if (v === undefined) { const [r, gg, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); v = 0.2126 * r + 0.7152 * gg + 0.0722 * b; lum.set(h, v); } return v; };
+  // brightness of every source cell (glyph ink x colour light); text and line
+  // work in non-picture pieces stay as characters unless "all"
+  const vals = new Float32Array(rows * cols), keys = new Array(rows * cols), text = [];
+  const pictureLike = opts.all || cw === ch, shade = pictureLike ? null : shadeTester(T);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const gch = T[r][c], k = C && C[r][c], hx = k && k !== " " && palette ? palette[k] : null, i = r * cols + c;
+    if (gch === " ") { vals[i] = -1; continue; }
+    if (!pictureLike && !shade(gch)) { vals[i] = -1; text.push([r, c, gch, hx]); continue; }
+    vals[i] = (LV[gch] ?? cover(gch) / 100) * L(hx); keys[i] = hx || opts.ink;
+  }
+  // percentiles from a 512-bin histogram (a full sort every frame was the bottleneck)
+  let vmax = 0, n = 0; for (let i = 0; i < vals.length; i++) if (vals[i] > vmax) vmax = vals[i];
+  const HB = 512, hist = new Uint32Array(HB);
+  for (let i = 0; i < vals.length; i++) if (vals[i] >= 0) { hist[Math.min(HB - 1, Math.floor((vals[i] / (vmax || 1)) * HB))]++; n++; }
+  const P = (q) => { let acc = 0; const want = q * n; for (let k = 0; k < HB; k++) { acc += hist[k]; if (acc >= want) return ((k + 0.5) / HB) * vmax; } return vmax; };
+  const a = P(lo), b = Math.max(P(hi), a + 1e-4);
+  const SIZES = tone.sizes || [0.2, 0.5, 0.85, 1.32];
+  const B4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  // the dot grid: square spacing set by density, sampled from the source cells
+  const step = Math.min(cw, ch) / density, unit = Math.min(cw, ch);
+  const W = cols * cw, H = rows * ch, gx = Math.max(1, Math.round(W / step)), gy = Math.max(1, Math.round(H / step));
+  const sx = W / gx, sy = H / gy, layers = SIZES.map(() => new Map());
+  const maxRadDev = 0.5 * unit * size * SIZES[SIZES.length - 1] * dpr;
+  const stamp = maxRadDev <= 6 && typeof ImageData !== "undefined" && !opts.noStamp; // small dots: write pixels directly
+  const dots = stamp ? SIZES.map(() => []) : null;
+  const pix = opts.dither ? [] : null; // dither: grid cells switched on by an 8x8 Bayer threshold
+  const sample = (fx, fy) => { // bilinear brightness, nearest colour
+    const c0 = Math.min(cols - 1, Math.max(0, Math.floor(fx))), r0 = Math.min(rows - 1, Math.max(0, Math.floor(fy)));
+    const c1 = Math.min(cols - 1, c0 + 1), r1 = Math.min(rows - 1, r0 + 1), tx = Math.min(1, Math.max(0, fx - c0)), ty = Math.min(1, Math.max(0, fy - r0));
+    const v = (i) => (vals[i] < 0 ? 0 : vals[i]);
+    const val = v(r0 * cols + c0) * (1 - tx) * (1 - ty) + v(r0 * cols + c1) * tx * (1 - ty) + v(r1 * cols + c0) * (1 - tx) * ty + v(r1 * cols + c1) * tx * ty;
+    const ni = Math.min(rows - 1, Math.round(fy)) * cols + Math.min(cols - 1, Math.round(fx));
+    return [val, keys[ni] || keys[r0 * cols + c0], vals[ni] < 0 && vals[r0 * cols + c0] < 0];
+  };
+  for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) {
+    const px = (i + 0.5) * sx, py = (j + 0.5) * sy;
+    const [v, hx, empty] = density === 1 && cw === ch ? [vals[j * cols + i], keys[j * cols + i], vals[j * cols + i] < 0] : sample(px / cw - 0.5, py / ch - 0.5);
+    if (empty || !hx) continue;
+    const t = Math.pow(Math.min(1, Math.max(0, (v - a) / (b - a))), g);
+    if (pix) { if (t > (B8[(j & 7) * 8 + (i & 7)] + 0.5) / 64) pix.push(i, j, opts.mono ? opts.ink : brighten(hx, sat)); continue; }
+    let lvl = Math.floor(t * SIZES.length - 0.5); const frac = t * SIZES.length - 0.5 - lvl;
+    if (frac > (B4[(j & 3) * 4 + (i & 3)] + 0.5) / 16) lvl++;
+    if (lvl < 0) continue;
+    lvl = Math.min(SIZES.length - 1, lvl);
+    const rad = 0.5 * unit * size * SIZES[lvl];
+    if (rad < 0.3) continue;
+    const fill = opts.mono ? opts.ink : brighten(hx, sat);
+    if (stamp) { dots[lvl].push((x + px) * dpr, (y + py) * dpr, rad * dpr, fill); continue; }
+    const m = layers[lvl]; let p = m.get(fill); if (!p) m.set(fill, (p = new Path2D()));
+    p.moveTo(x + px + rad, y + py); p.arc(x + px, y + py, rad, 0, Math.PI * 2);
+  }
+  if (pix) stampPixels(ctx, pix, x, y, sx, sy, dpr, opts.over);
+  else if (stamp) stampDots(ctx, dots, opts.over);
+  else for (const m of layers) for (const [fill, p] of m) { ctx.fillStyle = fill; ctx.fill(p); } // big dots last, so they merge
+  if (text.length) {
+    ctx.font = `${cw / CELL_W}px ${FONT}`; ctx.textBaseline = "middle";
+    for (const [r, c, gch, hx] of text) { ctx.fillStyle = (!opts.mono && hx) || opts.ink; ctx.fillText(gch, x + c * cw, y + (r + 0.5) * ch); }
+  }
+}
+
+const B8 = [0, 32, 8, 40, 2, 34, 10, 42, 48, 16, 56, 24, 50, 18, 58, 26, 12, 44, 4, 36, 14, 46, 6, 38, 60, 28, 52, 20, 62, 30, 54, 22,
+  3, 35, 11, 43, 1, 33, 9, 41, 51, 19, 59, 27, 49, 17, 57, 25, 15, 47, 7, 39, 13, 45, 5, 37, 63, 31, 55, 23, 61, 29, 53, 21];
+/* Dither pixels: solid rectangles written straight into one ImageData, edges rounded
+   to device pixels so neighbours meet without seams or overlaps. */
+// The pixel buffer a stamper writes into: a cleared one for live players (their canvas is
+// cleared every frame anyway), or the canvas's current pixels when something is already
+// painted underneath, like an export's background.
+function pixelBuffer(ctx, over) {
+  const cv = ctx.canvas, W = cv.width, H = cv.height;
+  if (over) return ctx.getImageData(0, 0, W, H);
+  let img = cv._apImg;
+  if (!img || img.width !== W || img.height !== H) img = cv._apImg = new ImageData(W, H);
+  img.data.fill(0);
+  return img;
+}
+const LE = new Uint8Array(new Uint32Array([1]).buffer)[0] === 1;
+const PACKED = new Map(); // hex -> packed RGBA for stampPixels (stampDots keeps [r, g, b] arrays in RGB)
+const pack = (r, g, b) => (LE ? (255 << 24) | (b << 16) | (g << 8) | r : (r << 24) | (g << 16) | (b << 8) | 255) >>> 0;
+function stampPixels(ctx, pix, x, y, sx, sy, dpr, over) {
+  const cv = ctx.canvas, W = cv.width, H = cv.height;
+  const img = pixelBuffer(ctx, over), d32 = new Uint32Array(img.data.buffer);
+  for (let k = 0; k < pix.length; k += 3) {
+    const i = pix[k], j = pix[k + 1], hex = pix[k + 2];
+    let c = PACKED.get(hex);
+    if (c === undefined) { const [r, g, b] = [1, 3, 5].map((o) => parseInt(hex.slice(o, o + 2), 16)); c = pack(r, g, b); PACKED.set(hex, c); }
+    const x0 = Math.max(0, Math.round((x + i * sx) * dpr)), x1 = Math.min(W, Math.round((x + (i + 1) * sx) * dpr));
+    const y0 = Math.max(0, Math.round((y + j * sy) * dpr)), y1 = Math.min(H, Math.round((y + (j + 1) * sy) * dpr));
+    for (let yy = y0; yy < y1; yy++) d32.fill(c, yy * W + x0, yy * W + x1);
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/*
+ * Dither for line art, text and every other non-picture piece: draw the frame as
+ * text onto a small canvas where one pixel is one dither pixel (the browser's
+ * downscaling averages each pixel's coverage and colour), then switch each pixel on
+ * or off against the 8x8 Bayer matrix and write it as a solid block. Shapes, lines
+ * and letters all survive as dithered pixels, so borders and rules dither too.
+ */
+function paintDitherImage(ctx, frame, palette, opts) {
+  const { x = 0, y = 0, cw, ch, ink = "#e4e4e7", dpr = 1, density = 1.31 } = opts, sat = (opts.tone && opts.tone.sat) ?? 0.85;
+  const T = (typeof frame === "string" ? frame : frame.text).split("\n");
+  const cols = T[0] ? [...T[0]].length : 0, rows = T.length;
+  const px = Math.max(1 / dpr, Math.min(cw, ch) / (2.6 * Math.max(0.3, density))); // dither pixel, CSS px
+  const kc = Math.max(1, (opts.gamma ?? 0.35) / 0.35); // contrast, same curve as the picture path
+  const gw = Math.max(1, Math.ceil((cols * cw) / px)), gh = Math.max(1, Math.ceil((rows * ch) / px));
+  const cv = ctx.canvas;
+  let off = cv._apDither;
+  if (!off) off = cv._apDither = document.createElement("canvas");
+  if (off.width !== gw || off.height !== gh) { off.width = gw; off.height = gh; }
+  const o = off.getContext("2d", { willReadFrequently: true });
+  o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, gw, gh); o.setTransform(1 / px, 0, 0, 1 / px, 0, 0);
+  const atlas = opts.atlas || (cv._apDitherAtlas ||= new GlyphAtlas());
+  paintText(o, frame, opts.mono ? null : palette, 0, 0, cw, ch, ink, atlas, dpr);
+  const src = o.getImageData(0, 0, gw, gh).data;
+  const img = pixelBuffer(ctx, opts.over), d32 = new Uint32Array(img.data.buffer), W = cv.width, H = cv.height;
+  for (let j = 0; j < gh; j++) {
+    const y0 = Math.max(0, Math.round((y + j * px) * dpr)), y1 = Math.min(H, Math.round((y + (j + 1) * px) * dpr));
+    if (y1 <= y0) continue;
+    for (let i = 0; i < gw; i++) {
+      const q = (j * gw + i) * 4, a = src[q + 3];
+      if (a < 6 || Math.pow(a / 255, kc) <= (B8[(j & 7) * 8 + (i & 7)] + 0.5) / 64) continue; // coverage (with contrast) against the Bayer threshold
+      const r = src[q], g = src[q + 1], b = src[q + 2], mx = Math.max(r, g, b, 1), f = (255 / mx) * sat + (1 - sat);
+      const c = pack(Math.min(255, Math.round(r * f)), Math.min(255, Math.round(g * f)), Math.min(255, Math.round(b * f)));
+      const x0 = Math.max(0, Math.round((x + i * px) * dpr)), x1 = Math.min(W, Math.round((x + (i + 1) * px) * dpr));
+      for (let yy = y0; yy < y1; yy++) d32.fill(c, yy * W + x0, yy * W + x1);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+/* Pixel stamper for small dots: anti-aliased coverage masks per radius, written
+   into one ImageData and put back once. Far faster than tens of thousands of
+   arcs for gallery cards and normal stage sizes. */
+const MASKS = new Map(), RGB = new Map();
+function maskFor(r, fx, fy) {
+  // r quantised to 1/4 px, and the dot centre's sub-pixel offset to 1/4 px,
+  // so dots land exactly where they belong instead of snapping to whole pixels
+  // (snapping made the spacing uneven, which showed as a faint grid)
+  const q = Math.round(r * 4) / 4, ox = Math.round(fx * 4) / 4, oy = Math.round(fy * 4) / 4, key = q * 100 + ox * 10 + oy;
+  let m = MASKS.get(key); if (m) return m;
+  const R = Math.ceil(q + 1), n = R * 2 + 1, a = new Float32Array(n * n);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    let c = 0; for (let sj = 0; sj < 4; sj++) for (let si = 0; si < 4; si++) { const dx = i - R + (si + 0.5) / 4 - ox, dy = j - R + (sj + 0.5) / 4 - oy; if (dx * dx + dy * dy <= q * q) c++; }
+    a[j * n + i] = c / 16;
+  }
+  m = { R, n, a }; MASKS.set(key, m); return m;
+}
+const rgbOf = (h) => { let v = RGB.get(h); if (!v) { v = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); RGB.set(h, v); } return v; };
+function stampDots(ctx, layers, over) {
+  const cv = ctx.canvas, W = cv.width, H = cv.height;
+  const img = pixelBuffer(ctx, over), d = img.data;
+  for (const L of layers) for (let k = 0; k < L.length; k += 4) {
+    const cx = L[k], cy = L[k + 1], bx = Math.floor(cx), by = Math.floor(cy);
+    const m = maskFor(L[k + 2], cx - bx - 0.5, cy - by - 0.5), [r, g, b] = rgbOf(L[k + 3]);
+    const x0 = bx - m.R, y0 = by - m.R;
+    for (let j = 0; j < m.n; j++) { const yy = y0 + j; if (yy < 0 || yy >= H) continue;
+      for (let i = 0; i < m.n; i++) { const xx = x0 + i; if (xx < 0 || xx >= W) continue;
+        const cov = m.a[j * m.n + i]; if (cov <= 0) continue;
+        const o = (yy * W + xx) * 4, A = d[o + 3] / 255, na = cov + A * (1 - cov);
+        d[o] = (r * cov + d[o] * A * (1 - cov)) / na; d[o + 1] = (g * cov + d[o + 1] * A * (1 - cov)) / na; d[o + 2] = (b * cov + d[o + 2] * A * (1 - cov)) / na; d[o + 3] = na * 255;
+      } }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function paintText(ctx, frame, palette, x, y, cw, ch, ink, atlas, dpr = 1) {
+  const T = (typeof frame === "string" ? frame : frame.text).split("\n");
+  const C = typeof frame === "string" ? null : frame.color.split("\n");
+  if (atlas) {
+    const key = cw + "x" + ch + "@" + dpr;
+    if (atlas.key !== key) { atlas.reset(cw, ch, dpr); atlas.key = key; }
+    const blocks = new Map();
+    for (let r = 0; r < T.length; r++) {
+      const row = T[r], col = C ? C[r] : null;
+      let ci = 0;
+      for (const g of row) {
+        const k = col && col[ci], c = ci++;
+        if (g === " ") continue;
+        const fill = (k && k !== " " && palette && palette[k]) || ink;
+        if (g === "█") { let p = blocks.get(fill); if (!p) blocks.set(fill, (p = new Path2D())); p.rect(x + c * cw, y + r * ch, cw + 0.5, ch + 0.5); continue; }
+        const [sx, sy] = atlas.tile(g, fill);
+        ctx.drawImage(atlas.canvas, sx, sy, atlas.tw, atlas.th, x + c * cw, y + r * ch, cw, ch);
+      }
+    }
+    for (const [fill, p] of blocks) { ctx.fillStyle = fill; ctx.fill(p); }
+    return;
+  }
+  ctx.font = `${cw / CELL_W}px ${FONT}`; ctx.textBaseline = "middle";
+  for (let r = 0; r < T.length; r++) {
+    const row = [...T[r]], col = C ? [...C[r]] : null;
+    for (let c = 0; c < row.length; c++) {
+      const g = row[c];
+      if (g === " ") continue;
+      const k = col && col[c];
+      ctx.fillStyle = (k && k !== " " && palette && palette[k]) || ink;
+      // Block elements look gapped as glyphs at large sizes: paint them as rects.
+      if (g === "█") { ctx.fillRect(x + c * cw, y + r * ch, Math.ceil(cw), Math.ceil(ch)); continue; }
+      ctx.fillText(g, x + c * cw, y + (r + 0.5) * ch);
+    }
+  }
+}
+
+/** Back-compat: draw a frame sized by font px. Returns [width, height]. */
+function drawFrame(ctx, frame, palette, opts) {
+  const { px = 14, aspect = 1 / CELL_W } = opts;
+  const cw = px * CELL_W, ch = cw * aspect;
+  paint(ctx, frame, palette, { ...opts, cw, ch });
+  const T = (typeof frame === "string" ? frame : frame.text).split("\n");
+  return [cw * [...T[0]].length, ch * T.length];
+}
+
+/** A frame in a look, ready to paint: text looks restyle it, shape looks don't. */
+function frameFor(frame, palette, meta, look = {}) {
+  const mode = renderMode(meta, look);
+  if (mode !== "text") return { frame, mode };
+  const restyled = look.chars || (look.look && look.look !== "original");
+  return { frame: restyled ? restyle(frame, palette, look) : look.mono && typeof frame !== "string" ? frame.text : frame, mode };
+}
+
+/**
+ * Render a frame centred on a canvas of width x height. fit "contain" keeps the
+ * whole piece in view with a margin; "cover" fills the canvas edge to edge.
+ * meta (for the cell shape) and look are optional.
+ */
+function renderTo(canvas, frame, palette, { width, height, bg = "#09090b", ink = "#e4e4e7", fit = "contain", margin = 0.08, meta, look = {} }) {
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
+  const T = (typeof frame === "string" ? frame : frame.text).split("\n");
+  const cols = [...T[0]].length, rows = T.length, aspect = cellAspect(meta);
+  const m = fit === "cover" ? 1 : 1 - margin * 2;
+  const sx = (width * m) / cols, sy = (height * m) / (rows * aspect);
+  const cw = fit === "cover" ? Math.max(sx, sy) : Math.min(sx, sy), ch = cw * aspect;
+  if (meta && meta.cell === "square" && look.lift === undefined) look = { ...look, lift: false }; // photos keep true colour
+  if (meta && meta.dots) look = { ...meta.dots, ...look }; // a piece's own halftone tuning
+  const { frame: f, mode } = frameFor(frame, palette, meta, look);
+  const light = /^#?[0-9a-f]{6}$/i.test(bg.replace("#", "")) && lumHex(bg) > 0.6;
+  paint(ctx, f, palette, { ...look, invert: look.invert ?? light, x: (width - cols * cw) / 2, y: (height - rows * ch) / 2, cw, ch, ink, mode, over: true });
+  return canvas;
+}
+
+// Brighten a colour by f (1.3 = 30%) keeping its hue, clamped per channel.
+const boostCache = new Map();
+function boostHex(h, f) {
+  const key = h + f; if (boostCache.has(key)) return boostCache.get(key);
+  const v = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)), mx = Math.max(...v, 1);
+  const k = Math.min(f, 255 / mx), out = "#" + v.map((c) => Math.round(c * k).toString(16).padStart(2, "0")).join("");
+  boostCache.set(key, out); return out;
+}
+function lumHex(h) { h = h.replace("#", ""); const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+
+/** Export presets for wallpapers, thumbnails and social images. */
+const PRESETS = {
+  "desktop-4k": { label: "Desktop 4K", width: 3840, height: 2160, fit: "cover" },
+  desktop: { label: "Desktop 1080p", width: 1920, height: 1080, fit: "cover" },
+  phone: { label: "Phone wallpaper", width: 1179, height: 2556, fit: "cover" },
+  youtube: { label: "YouTube thumbnail", width: 1280, height: 720, fit: "contain" },
+  "github-social": { label: "GitHub social preview", width: 1280, height: 640, fit: "contain" },
+  "x-header": { label: "X / Twitter header", width: 1500, height: 500, fit: "cover" },
+  "linkedin-banner": { label: "LinkedIn banner", width: 1584, height: 396, fit: "cover" },
+  square: { label: "Square post", width: 1080, height: 1080, fit: "contain" },
+  story: { label: "Story / Reel", width: 1080, height: 1920, fit: "contain" },
+};
+
+
+return { paint, CELL_W };
+})();
+const Piece = (() => {
+const { Grid, palette } = Kit;
+/* bouncing-letters: block letters drop in one by one and bounce to rest on a floor. */
+
+
+/* 5x5 block font, drawn fresh for this piece. */
+const FONT = {
+  A: " ### |#   #|#####|#   #|#   #", B: "#### |#   #|#### |#   #|#### ", C: " ####|#    |#    |#    | ####",
+  D: "#### |#   #|#   #|#   #|#### ", E: "#####|#    |#### |#    |#####", F: "#####|#    |#### |#    |#    ",
+  G: " ####|#    |#  ##|#   #| ####", H: "#   #|#   #|#####|#   #|#   #", I: "#####|  #  |  #  |  #  |#####",
+  J: "  ###|    #|    #|#   #| ### ", K: "#   #|#  # |###  |#  # |#   #", L: "#    |#    |#    |#    |#####",
+  M: "#   #|## ##|# # #|#   #|#   #", N: "#   #|##  #|# # #|#  ##|#   #", O: " ### |#   #|#   #|#   #| ### ",
+  P: "#### |#   #|#### |#    |#    ", Q: " ### |#   #|# # #|#  # | ## #", R: "#### |#   #|#### |#  # |#   #",
+  S: " ####|#    | ### |    #|#### ", T: "#####|  #  |  #  |  #  |  #  ", U: "#   #|#   #|#   #|#   #| ### ",
+  V: "#   #|#   #|#   #| # # |  #  ", W: "#   #|#   #|# # #|## ##|#   #", X: "#   #| # # |  #  | # # |#   #",
+  Y: "#   #| # # |  #  |  #  |  #  ", Z: "#####|   # |  #  | #   |#####",
+  0: " ### |#   #|#   #|#   #| ### ", 1: "  #  | ##  |  #  |  #  | ### ", 2: " ### |#   #|  ## | #   |#####",
+  3: "#### |    #| ### |    #|#### ", 4: "#   #|#   #|#####|    #|    #", 5: "#####|#    |#### |    #|#### ",
+  6: " ### |#    |#### |#   #| ### ", 7: "#####|    #|   # |  #  |  #  ", 8: " ### |#   #| ### |#   #| ### ",
+  9: " ### |#   #| ####|    #| ### ", "!": "  #  |  #  |  #  |     |  #  ", "?": " ### |#   #|  ## |     |  #  ",
+  ".": "     |     |     |     |  #  ", ",": "     |     |     |  #  | #   ", ":": "     |  #  |     |  #  |     ",
+  "-": "     |     | ### |     |     ", "#": " # # |#####| # # |#####| # # ", ">": "#    | #   |  #  | #   |#    ",
+  "'": "  #  |  #  |     |     |     ", " ": "     |     |     |     |     ",
+};
+const GL = {};
+for (const k in FONT) GL[k] = FONT[k].split("|");
+const glyph = (c) => GL[c] || GL[" "];
+
+const meta = {
+  slug: "bouncing-letters",
+  name: "Bouncing Letters",
+  category: "lettering",
+  note: "Block letters drop in one at a time, bounce with a little squash and settle on the floor before falling away.",
+  tags: ["text", "bounce", "playful", "hero", "banner"],
+  cols: 108, rows: 21, fps: 30,
+  palette: palette(["#79c0ff", "#7ee787", "#ffa657", "#ff7b72", "#d2a8ff", "#ffd166", "#30363d", "#1c2128", "#8b949e"]),
+};
+
+const TEXT = "DAVIDE STEFANELLI";
+const CYC = 9.5, GAP = 0.22, REST = 12;     // REST = top row of a resting letter
+
+function create() {
+  const { cols, rows } = meta;
+  const g = new Grid(cols, rows);
+  const H2 = rows * 2;
+  const buf = new Array(cols * H2);
+  // precompute one drop: height above rest (rows) sampled every 1/120 s
+  const DT = 1 / 120, table = [];
+  let h = 15, v = 0;
+  for (let i = 0; i < 120 * 3; i++) {
+    table.push(h);
+    v -= 70 * DT; h += v * DT;
+    if (h < 0) { h = 0; v = -v * 0.5; if (v < 2) v = 0; }
+  }
+  const height = (tau) => (tau < 0 ? 99 : table[Math.min(table.length - 1, Math.floor(tau / DT))]);
+  const X0 = Math.floor((cols - (TEXT.length * 6 - 1)) / 2);
+  return (t) => {
+    g.clear();
+    buf.fill(undefined);
+    const lt = ((t % CYC) + CYC) % CYC;
+    for (let x = 0; x < cols; x++) g.set(x, REST + 5, "▀", "6");
+    for (let x = 0; x < cols; x++) g.set(x, REST + 6, (x % 4 === 0) ? "·" : " ", "7");
+    [...TEXT].forEach((c, k) => {
+      if (c === " ") return;
+      const co = "012345"[k % 6];
+      const tau = lt - 0.3 - k * GAP;
+      let hh = height(tau);
+      const exit = lt - 7.2 - k * 0.08;
+      let squash = 0;
+      if (exit > 0) hh = -(0.5 * 70 * exit * exit);           // floor opens, letters fall away
+      else if (hh < 0.25 && tau > 0.2 && tau < 2.2) {
+        // short squash on each landing
+        const vNow = Math.abs(height(tau + 0.02) - hh) / 0.02;
+        squash = vNow > 3 ? 1 : 0;
+      }
+      if (hh > 30) return;
+      const top2 = Math.round((REST - hh) * 2);
+      const gl = glyph(c), x = X0 + k * 6;
+      for (let j = 0; j < 5; j++) for (let i = 0; i < 5; i++) if (gl[j][i] === "#") {
+        for (let s = 0; s < 2; s++) {
+          let yy = top2 + j * 2 + s;
+          if (squash) yy = top2 + 1 + Math.floor((j * 2 + s) * 0.9);
+          if (yy >= 0 && yy < H2) buf[x + i + yy * cols] = co;
+        }
+      }
+      // shadow on the floor
+      if (exit <= 0) {
+        const w = Math.max(1, Math.round(5 - hh / 3.5));
+        const sx = x + Math.floor((5 - w) / 2);
+        for (let i = 0; i < w; i++) g.set(sx + i, REST + 5, "█", "6");
+      }
+    });
+    for (let y = 0; y < REST + 5; y++) for (let x = 0; x < cols; x++) {
+      const a = buf[x + 2 * y * cols], b = buf[x + (2 * y + 1) * cols];
+      if (a && b) g.set(x, y, "█", a);
+      else if (a) g.set(x, y, "▀", a);
+      else if (b) g.set(x, y, "▄", b);
+    }
+    // letters falling through the floor show below it
+    for (let y = REST + 6; y < rows; y++) for (let x = 0; x < cols; x++) {
+      const a = buf[x + 2 * y * cols], b = buf[x + (2 * y + 1) * cols];
+      if (a || b) g.set(x, y, a && b ? "█" : a ? "▀" : "▄", a || b);
+    }
+    return g.frame();
+  };
+}
+
+return { meta, create };
+})();
+const { meta, create } = Piece;
+const stage = document.getElementById('stage'), ctx = stage.getContext('2d');
+const cw = 10, ch = cw / CanvasRuntime.CELL_W;
+stage.width = Math.round(meta.cols * cw);
+stage.height = Math.round(meta.rows * ch);
+const draw = create(); let started = performance.now();
+let last = -Infinity;
+function tick(now) {
+  if (now - last >= 1000 / meta.fps) {
+    last = now;
+    ctx.fillStyle = '#0d1117'; ctx.fillRect(0, 0, stage.width, stage.height);
+    CanvasRuntime.paint(ctx, Glyphs.restyle(draw((now - started) / 1000), meta.palette, {look:'dense'}), meta.palette, {
+      x:0, y:0, cw, ch, mode:'text', dpr:1,
+      ink:'#e6edf3', steps:3
+    });
+  }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+document.getElementById('png').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = stage.toDataURL('image/png');
+  a.download = 'davide-stefanelli-dense-ascii.png';
+  a.click();
+});
+document.getElementById('video').addEventListener('click', () => {
+  const button = document.getElementById('video'), status = document.getElementById('status');
+  if (!stage.captureStream || !window.MediaRecorder) { status.textContent = 'Questo browser non supporta la registrazione WebM.'; return; }
+  button.disabled = true;
+  const stream = stage.captureStream(meta.fps);
+  const mime = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(MediaRecorder.isTypeSupported);
+  const recorder = new MediaRecorder(stream, mime ? {mimeType:mime} : undefined);
+  const chunks = [];
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => {
+    const url = URL.createObjectURL(new Blob(chunks, {type:recorder.mimeType}));
+    const a = document.createElement('a'); a.href=url; a.download='davide-stefanelli-dense-ascii.webm'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+    stream.getTracks().forEach(track => track.stop());
+    button.disabled = false; status.textContent = 'Animazione scaricata.';
+  };
+  started = performance.now();
+  recorder.start(); status.textContent = 'Registrazione in corso (9,5 secondi)…';
+  setTimeout(() => recorder.stop(), 9500);
+});
+</script></body></html>

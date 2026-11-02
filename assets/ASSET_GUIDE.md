@@ -1,6 +1,6 @@
 # Asset Guide
 
-The profile uses a self-contained SVG nameplate, native README content, and the existing scientific animations. All displayed image assets are local to this repository.
+The profile uses a Dense ASCII animated GIF nameplate, native README content, and the existing scientific animations. All displayed image assets are local to this repository.
 
 ## Included assets
 
@@ -8,8 +8,10 @@ The profile uses a self-contained SVG nameplate, native README content, and the 
   Approved source MRI animation used for the primary clinical imaging panel.
 - `brain-candidates/Brainanim-FreeSurfer.gif`
   Approved source cortical surface animation used for the secondary research panel.
+- `davide-stefanelli-dense-ascii.gif`
+  Active nameplate at the top of the profile README. The first frame shows the complete name, followed by the letter-drop loop.
 - `profile-nameplate.svg`
-  Animated SVG nameplate used at the very top of the profile README.
+  Previous SVG nameplate, retained for reference.
 - `brain-turntable.png`
   Historical ImageGen 4×4 sheet, retained for reference; no longer used by the banner.
 - `brain-turntable-stable.png`, `brain-turntable-stable.json`
@@ -47,6 +49,8 @@ The profile uses a self-contained SVG nameplate, native README content, and the 
   Downloaded from Wikimedia Commons file `Brainanim.gif`, described there as a rotating view of a left hemisphere pial surface with Desikan-Killiany atlas parcellation constructed in FreeSurfer and rendered in FreeView.
   Source page: `https://commons.wikimedia.org/wiki/File:Brainanim.gif`
   License note: CC BY-SA 4.0. Keep attribution and share-alike requirements attached to the source file and to derivatives.
+- `davide-stefanelli-dense-ascii.gif`, `scripts/davide-stefanelli-dense-ascii.html`
+  The GIF was exported from the approved local HTML preview at 20 fps using `scripts/export_dense_ascii_gif.py` and `scripts/export_dense_frames.js`. The preview adapts [ASCII Magic's Bouncing Letters piece](https://github.com/kailashsr38/ascii-magic-art/blob/main/pieces/bouncing-letters.js) with the text “DAVIDE STEFANELLI” and uses its [Dense ASCII glyph renderer](https://github.com/kailashsr38/ascii-magic-art/blob/main/runtime/glyphs.js). Copyright (c) 2026 ASCII Magic (ascii-magic.com); [MIT license](../scripts/ASCII_MAGIC_LICENSE). The preview source is retained so the export can be regenerated.
 - `profile-nameplate.svg`
   Authored in `scripts/generate_nameplate.py`: pixel typography, cyan/lavender gradient, stepped light sweep, rotating pixel-art brain, and a decorative signal trace. `scripts/pixel_lettering.py` defines the name as custom 5×7 glyphs, drawn with 12-unit square pixels, top-edge highlights and a lavender offset shadow. The name is SVG path geometry, with no font dependency; the accessible SVG title preserves the full name. Supporting labels use Segoe UI / Helvetica / Arial and monospace fallbacks. `scripts/brain_sprite.py` embeds the active PNG sheet as a data URL and reads its dimensions and timing from the accompanying JSON: 120 cells in a 4.8-second CSS loop (25 fps). No external fonts, JavaScript, or runtime image services.
 - `brain-turntable-stable.png`, `brain-turntable-stable.gif`
@@ -72,13 +76,15 @@ The profile uses a self-contained SVG nameplate, native README content, and the 
 
 ## Regeneration
 
-Generate the current motion assets with:
+Generate the existing scientific and divider motion assets with:
 
 ```bash
 python scripts/generate_assets.py
 ```
 
-The GIF pipeline uses Pillow; the SVG nameplate is emitted with Python string generation only. No network access is required. To regenerate only the nameplate, run `python scripts/generate_nameplate.py`. The full generator delegates to the same implementation.
+To regenerate the Dense ASCII nameplate, install Node.js and Pillow, then run `python scripts/export_dense_ascii_gif.py scripts/davide-stefanelli-dense-ascii.html` on Windows. The export takes its characters, colors, and motion directly from the approved preview. The rendering font is Windows Consolas.
+
+The existing asset pipeline uses Pillow; the historical SVG nameplate is emitted with Python string generation only. No network access is required. To regenerate that SVG alone, run `python scripts/generate_nameplate.py`. The full generator delegates to the same implementation.
 
 To regenerate only the section separator, run `python scripts/generate_signal_divider.py`. It is also included in the full asset build.
 
@@ -95,11 +101,9 @@ The scientific renderer uses one fixed 3D pivot, orthographic scale, camera and 
 
 ## GitHub rendering and motion
 
-- The public README pins the banner URL to the commit containing the approved image, avoiding stale images served for the mutable `main` URL. After publishing a new banner asset, update this commit reference. The local preview maps it back to the working-copy SVG so design changes remain immediately visible.
-
-- GitHub removes scripts and page styles from README HTML. Animation lives inside the linked SVG image; the README itself uses ordinary Markdown and supported HTML. See [GitHub's rendering pipeline](https://github.com/github/markup).
-- The name stays visible throughout the animation. The SVG disables motion for `prefers-reduced-motion: reduce`; the existing GIFs do not respond to that preference.
-- The rotating brain uses a raster sprite sheet inside an SVG, not an embedded external GIF. SVG images cannot fetch external image resources in image context, but can use embedded data URLs: [MDN SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image). The complete banner is approximately 245 KB, versus 2.5 MB with the historical generated sheet; it keeps the existing animated vector lettering and avoids external requests.
+- GitHub removes scripts and page styles from README HTML. The Dense ASCII animation is an ordinary linked GIF image; the README itself uses supported HTML. See [GitHub's rendering pipeline](https://github.com/github/markup).
+- The GIF loops in 9.5 seconds. Its first frame shows the complete name. As with the other GIFs in the README, it cannot respond to `prefers-reduced-motion`.
+- The historical SVG nameplate uses a raster sprite sheet inside an SVG. SVG images cannot fetch external image resources in image context, but can use embedded data URLs: [MDN SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image).
 - MRI and cortical-surface GIFs are illustrative source material, not outputs produced by the featured repositories. Their source credits above remain applicable.
 - Unused historical assets are retained for future iterations.
 
