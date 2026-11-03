@@ -2,13 +2,10 @@
   <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in colorful Dense ASCII letters, dropping and bouncing into place" width="100%" />
 </p>
 
-<p align="center">
-  <img src="./assets/ascii-profile-readme.gif" alt="Animated ASCII profile with a rotating brain and terminal panels for LinkedIn, email, and projects" width="100%" />
-  <br/>
-  <a href="https://www.linkedin.com/in/davide-stefanelli-engineer/">LinkedIn</a> &middot;
-  <a href="mailto:davide.stefanelli.ing@gmail.com">Email</a> &middot;
-  <a href="https://github.com/DavideStefanelli97?tab=repositories">Work / Projects</a>
-</p>
+<div align="center">
+<img src="./assets/ascii-profile-panels/intro.gif" alt="Animated terminal profile: Computer Vision and AI Research Engineer, neuro-engineer, based in Cesena, Italy" align="left" width="100%" /><img src="./assets/ascii-profile-panels/brain.gif" alt="Rotating brain visualized as detailed ASCII art" align="left" width="57%" /><a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-profile-panels/linkedin.gif" alt="LinkedIn — open my professional profile" align="right" width="43%" /></a><a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-profile-panels/email.gif" alt="Email — write to me" align="right" width="43%" /></a><a href="https://github.com/DavideStefanelli97?tab=repositories"><img src="./assets/ascii-profile-panels/projects.gif" alt="Projects — explore my work" align="right" width="43%" /></a>
+</div>
+<br clear="all" />
 
 ## Tools & approach
 
