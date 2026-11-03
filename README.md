@@ -3,95 +3,11 @@
 </p>
 
 <p align="center">
-  <img src="./assets/terminal-intro.gif" alt="Davide Stefanelli: Computer Vision and ML Research Engineer; Biomedical Engineer; based in Cesena, Italy; M.Sc. candidate at the University of Bologna" width="100%" />
-</p>
-
-<table align="center" width="100%">
-  <tr>
-    <td width="60%" align="center" valign="middle">
-      <img src="./assets/brain-turntable-ascii-palette.gif" alt="Rotating brain rendered as colorful ASCII art" width="100%" />
-    </td>
-    <td width="40%" align="center" valign="middle">
-      <a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-links/linkedin.gif" alt="LinkedIn — visit my professional profile" width="100%" /></a><br/>
-      <a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-links/email.gif" alt="Email — write to me about proposals and collaborations" width="100%" /></a><br/>
-      <a href="#selected-projects"><img src="./assets/ascii-links/projects.gif" alt="Projects — explore my selected research and work" width="100%" /></a>
-    </td>
-  </tr>
-</table>
-
-I build systems that turn images and neural signals into useful representations: **visual identity retrieval, EEG analysis, and medical-image processing**. My work connects model development with the tools needed to understand it—dataset curation, evaluation, failure analysis, and scientific visualization.
-
-At **Vivilo** (formerly Jubatus), I develop visual re-identification and retrieval workflows for motorsport media, from dataset construction and PyTorch training to query–gallery evaluation and embedding post-processing.
-
-Alongside this, I am completing an **M.Sc. in Biomedical Engineering for Neuroscience** at the University of Bologna, with graduation expected in **March 2027**. I am interested in how representation learning can generalize across subjects and make neural and biomedical data easier to interpret.
-
-<p align="center">
-  <img src="./assets/signal-divider.svg" alt="" width="100%" />
-</p>
-
-## Selected projects
-
-### [EEG Processing Pipeline ↗](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline)
-
-**From raw recordings to the dynamics of attention.**
-
-A four-stage MATLAB / EEGLAB workflow for a three-stimulus oddball task: filtering and channel quality control, ICA artifact removal, ERP / P300 analysis, and Morlet time–frequency decomposition. Configuration files and diagnostic reports make each processing step inspectable.
-
-<p><sub>MATLAB · EEGLAB · ICA · ERP / P300 · Morlet CWT</sub></p>
-
-<p align="center">
-  <a href="./assets/projects/eeg-erp-topomaps.png"><img src="./assets/projects/eeg-erp-topomaps.png" alt="Grand-average EEG scalp maps from 25 subjects, comparing standard, target and distractor responses from 0 to 700 milliseconds" width="100%" /></a>
+  <img src="./assets/ascii-profile-readme.gif" alt="Animated ASCII profile with a rotating brain and terminal panels for LinkedIn, email, and projects" width="100%" />
   <br/>
-  <sub><strong>EEG across space and time.</strong> Grand-average scalp potentials · 25 subjects · Standard, target and distractor stimuli.</sub>
-</p>
-
-<details>
-  <summary>Explore the time–frequency view</summary>
-  <br/>
-  <p align="center">
-    <a href="./assets/projects/eeg-time-frequency.png"><img src="./assets/projects/eeg-time-frequency.png" alt="Grand-average Morlet time-frequency maps at Fz, Cz and Pz for standard, target and distractor stimuli, with power in decibels relative to baseline" width="100%" /></a>
-    <br/>
-    <sub>Morlet CWT at Fz, Cz and Pz · Baseline-relative power in dB.</sub>
-  </p>
-</details>
-
-[Explore the pipeline →](https://github.com/DavideStefanelli97/MATLAB-EEG-Processing-Pipeline)
-
-<br/>
-
-### [Medical Imaging Analysis ↗](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis)
-
-**From image intensities to anatomical boundaries.**
-
-Level-set segmentation with Chan–Vese and Malladi–Sethian methods, from kidney and cardiac contours to a slice-by-slice left atrium reconstruction. Complementary rigid-registration workflows align medical images using NCC, SSD and mutual information, with visual reports to inspect the results.
-
-<p><sub>MATLAB · DICOM · Level sets · 3D reconstruction · Image registration</sub></p>
-
-<p align="center">
-  <a href="./assets/projects/imaging-ventricle-evolution.gif"><img src="./assets/projects/imaging-ventricle-evolution.gif" alt="Animated Malladi-Sethian contour evolution segmenting the left ventricle on a cardiac image" width="49%" /></a>
-  <a href="./assets/projects/imaging-atrium-slices.gif"><img src="./assets/projects/imaging-atrium-slices.gif" alt="Animated traversal of MRI slices showing left atrium segmentation contours and masks" width="49%" /></a>
-  <br/>
-  <sub><strong>Contours in motion.</strong> Left: left-ventricle contour evolution. Right: left atrium segmentation across MRI slices.</sub>
-</p>
-
-[Explore the imaging workflows →](https://github.com/DavideStefanelli97/Medical-Imaging-Analysis)
-
-
-<p align="center">
-  <img src="./assets/signal-divider.svg" alt="" width="100%" />
-</p>
-
-## From brain signals to intelligent systems
-
-My biomedical projects span electrophysiology, anatomical imaging, and neural modeling. My next research questions center on **EEG representation learning, cross-subject generalization, and brain-inspired learning**.
-
-I have also built an **open-set EEG identification study** using compact neural encoders and metric learning on PhysioNet EEGMMIDB, with subject-separated training and evaluation. The work connects my experience in visual retrieval with neural data; its public code release is in preparation.
-
-<p align="center">
-  <img src="./assets/head-mri-panel.gif" alt="Illustrative structural MRI slices through the head" width="54%" />
-  <img src="./assets/freesurfer-panel.gif" alt="Illustrative rotating cortical surface with FreeSurfer anatomical parcellation" width="43%" />
-  <br/>
-  <sub>Structural imaging and cortical anatomy · Illustrative source animations, not project outputs · <a href="./assets/ASSET_GUIDE.md#provenance">Credits</a></sub>
+  <a href="https://www.linkedin.com/in/davide-stefanelli-engineer/">LinkedIn</a> &middot;
+  <a href="mailto:davide.stefanelli.ing@gmail.com">Email</a> &middot;
+  <a href="https://github.com/DavideStefanelli97?tab=repositories">Work / Projects</a>
 </p>
 
 ## Tools & approach
