@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in colorful Dense ASCII letters, dropping and bouncing into place" width="100%" />
+  <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in colorful Dense ASCII letters, forming from falling particles before pouring away" width="100%" />
 </p>
 
 <div align="center">

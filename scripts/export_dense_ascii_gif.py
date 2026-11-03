@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=Path, help="Approved Dense ASCII HTML preview")
     parser.add_argument(
-        "--output", type=Path, default=ROOT / "assets" / "davide-stefanelli-dense-ascii.gif"
+        "--output", type=Path, default=ROOT / "assets" / "davide-stefanelli-bouncing-dense-ascii.gif"
     )
     args = parser.parse_args()
 
