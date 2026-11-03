@@ -5,7 +5,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,7 +14,7 @@ DEFAULT_OUTPUT = ROOT / "assets" / "davide-stefanelli-dense-ascii.gif"
 FONT = Path(r"C:\Windows\Fonts\consola.ttf")
 CELL_WIDTH = 11
 CELL_HEIGHT = 18
-BACKGROUND = "#0d1117"
+BACKGROUND = "#000000"
 
 
 def render(frame: dict, font: ImageFont.FreeTypeFont) -> Image.Image:
@@ -23,17 +23,29 @@ def render(frame: dict, font: ImageFont.FreeTypeFont) -> Image.Image:
     width = len(rows[0])
     if any(len(row) != width for row in rows + colors):
         raise ValueError("The animation produced a non-rectangular frame")
-    image = Image.new("RGB", (width * CELL_WIDTH, len(rows) * CELL_HEIGHT), BACKGROUND)
-    draw = ImageDraw.Draw(image)
+    size = (width * CELL_WIDTH, len(rows) * CELL_HEIGHT)
+    image = Image.new("RGB", size, BACKGROUND)
+    glow = Image.new("RGBA", size)
+    glow_draw = ImageDraw.Draw(glow)
     for y, (row, color_row) in enumerate(zip(rows, colors)):
         for x, (glyph, key) in enumerate(zip(row, color_row)):
             if glyph != " ":
                 color = frame["palette"].get(key, "#e6edf3")
+                point = (x * CELL_WIDTH, y * CELL_HEIGHT + CELL_HEIGHT / 2)
+                if glyph in "@#%&WM8*":
+                    glow_draw.text(point, glyph, font=font, fill=(*bytes.fromhex(color[1:]), 100), anchor="lm")
+    # Keep the characters crisp while allowing a restrained CRT phosphor halo.
+    halo = glow.filter(ImageFilter.GaussianBlur(radius=4))
+    image.paste(halo, mask=halo.getchannel("A"))
+    draw = ImageDraw.Draw(image)
+    for y, (row, color_row) in enumerate(zip(rows, colors)):
+        for x, (glyph, key) in enumerate(zip(row, color_row)):
+            if glyph != " ":
                 draw.text(
                     (x * CELL_WIDTH, y * CELL_HEIGHT + CELL_HEIGHT / 2),
                     glyph,
                     font=font,
-                    fill=color,
+                    fill=frame["palette"].get(key, "#e6edf3"),
                     anchor="lm",
                 )
     return image

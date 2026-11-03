@@ -20,6 +20,9 @@ class Grid {
   hline(x0, x1, y, ch, co) {
     for (let x = x0; x <= x1; x++) this.set(x, y, ch, co);
   }
+  text(x, y, value, co) {
+    for (let i = 0; i < value.length; i++) this.set(x + i, y, value[i], co);
+  }
   frame() {
     const text = [], color = [];
     for (let y = 0; y < this.rows; y++) {
@@ -102,6 +105,7 @@ const scaleColor = (hex, shade) => "#" + [1, 3, 5]
   .join("");
 const RAMP = HUES.flatMap((hue) => DEPTH.map((shade) => scaleColor(hue, shade)));
 const DRIZZLE = KEYS[RAMP.length], FLOOR = KEYS[RAMP.length + 1];
+const CHROME = KEYS[RAMP.length + 2], TITLE = KEYS[RAMP.length + 3];
 
 export const meta = {
   slug: "particle-rain-name",
@@ -110,7 +114,7 @@ export const meta = {
   note: "Dense ASCII grains rain into a two-line name, hold, then pour off the bottom.",
   tags: ["particles", "title", "hero", "intro", "letters"],
   cols: 122, rows: 39, fps: 20,
-  palette: palette([...RAMP, "#1c3150", "#18253a"]),
+  palette: palette([...RAMP, "#1c3150", "#18253a", "#526574", "#a5bfcb"]),
 };
 
 export default function create() {
@@ -147,8 +151,23 @@ export default function create() {
       const y = ((o + t * v) % (rows + 6)) - 3;
       g.set(x, y, ".", DRIZZLE);
     }
-    // floor
-    g.hline(0, cols - 1, rows - 2, "_", FLOOR);
+    // The same ASCII terminal chrome used by the profile panels.
+    g.hline(1, cols - 2, 0, "-", CHROME);
+    g.hline(1, cols - 2, 2, "-", CHROME);
+    g.hline(1, cols - 2, rows - 1, "-", CHROME);
+    for (let y = 0; y < rows; y++) {
+      g.set(0, y, "|", CHROME);
+      g.set(cols - 1, y, "|", CHROME);
+    }
+    for (const y of [0, 2, rows - 1]) {
+      g.set(0, y, "+", CHROME);
+      g.set(cols - 1, y, "+", CHROME);
+    }
+    g.set(3, 1, ">", TITLE);
+    if (Math.floor(lt * 2) % 2 === 0) g.set(4, 1, "_", TITLE);
+    g.text(6, 1, "terminal - identity.txt", TITLE);
+    g.text(cols - 16, 1, "[_] [ ] [X]", CHROME);
+    g.hline(1, cols - 2, rows - 2, "_", FLOOR);
     for (const p of parts) {
       if (lt < p.t0) continue;
       if (lt < p.land) {
