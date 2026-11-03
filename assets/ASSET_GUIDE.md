@@ -1,6 +1,6 @@
 # Asset Guide
 
-The profile uses a Dense ASCII animated GIF nameplate, native README content, and the existing scientific animations. All displayed image assets are local to this repository.
+The profile uses a green phosphor halftone name animation, a green ASCII brain, native README content, and the existing scientific animations. All displayed image assets are local to this repository.
 
 ## Included assets
 
@@ -8,8 +8,12 @@ The profile uses a Dense ASCII animated GIF nameplate, native README content, an
   Approved source MRI animation used for the primary clinical imaging panel.
 - `brain-candidates/Brainanim-FreeSurfer.gif`
   Approved source cortical surface animation used for the secondary research panel.
-- `davide-stefanelli-dense-ascii.gif`
-  Active nameplate at the top of the profile README. The first frame shows the complete name, followed by the letter-drop loop.
+- `davide-stefanelli-halftone-green.gif`
+  Active name animation at the top of the profile README. Green phosphor dots grow brighter toward the center of each letter stroke as particles form the name and pour away.
+- `ascii-profile-panels/brain-phosphor-green-depth.gif`
+  Active rotating ASCII brain beside the contact links. Its green palette increases the contrast between cortical ridges and folds while preserving the source animation's characters and timing.
+- `davide-stefanelli-dense-ascii.gif`, `ascii-profile-panels/brain.gif`
+  Previous name and blue/cyan brain animations, retained for reference.
 - `terminal-intro.gif`
   Animated terminal introduction below the nameplate. Its first frame shows the full role and location text.
 - `profile-nameplate.svg`
@@ -21,7 +25,7 @@ The profile uses a Dense ASCII animated GIF nameplate, native README content, an
 - `brain-turntable-stable.gif`
   Standalone 320×320 nearest-neighbor GIF export of the same animation for review and reuse.
 - `brain-turntable-ascii-blue.gif`, `brain-turntable-ascii-palette.gif`
-  Two 480×481 ASCII GIF derivatives of the 120-frame brain turntable. The blue version preserves the approved first ASCII result; the second uses the green, orange, coral, violet, and gold colors of the Dense ASCII nameplate and is displayed beside the contact links in the README.
+  Two historical 480×481 ASCII GIF derivatives of the 120-frame brain turntable. The blue version preserves the approved first ASCII result; the second uses green, orange, coral, violet, and gold colors.
 - `ascii-links/linkedin.gif`, `ascii-links/email.gif`, `ascii-links/projects.gif`
   Three independent animated ASCII link cards, displayed to the right of the brain in the README. The entire image of each card is a link.
 - `head-mri-panel.gif`
@@ -94,7 +98,9 @@ Generate the existing scientific and divider motion assets with:
 python scripts/generate_assets.py
 ```
 
-To regenerate the Dense ASCII nameplate, install Node.js and Pillow, then run `python scripts/export_dense_ascii_gif.py scripts/davide-stefanelli-dense-ascii.html` on Windows. The export takes its characters, colors, and motion directly from the approved preview. The rendering font is Windows Consolas.
+To regenerate the active green name animation on Windows, install Node.js, Pillow, NumPy, and SciPy, then run `python scripts/export_particle_rain_gif.py --variant halftone-green --output assets/davide-stefanelli-halftone-green.gif`. It uses Windows Cascadia Mono and Consolas. To regenerate the previous Dense ASCII nameplate, run `python scripts/export_dense_ascii_gif.py scripts/davide-stefanelli-dense-ascii.html`.
+
+To regenerate the active green brain, run `python scripts/recolor_ascii_brain_gif.py --variant depth`, then copy `previews/ascii-profile-brain-phosphor-green-depth.gif` to `assets/ascii-profile-panels/brain-phosphor-green-depth.gif`. This recolors the original ASCII brain GIF's palettes without changing its compressed frames or timing.
 
 To regenerate either ASCII brain variant on Windows with Pillow installed, run `python scripts/render_ascii_brain.py --variant blue` or `python scripts/render_ascii_brain.py --variant palette`. These exports use the checked-in brain GIF and Windows Consolas; they do not need the FreeSurfer mesh files.
 
@@ -119,9 +125,9 @@ The scientific renderer uses one fixed 3D pivot, orthographic scale, camera and 
 
 ## GitHub rendering and motion
 
-- GitHub removes scripts and page styles from README HTML. The Dense ASCII animation is an ordinary linked GIF image; the README itself uses supported HTML. See [GitHub's rendering pipeline](https://github.com/github/markup).
+- GitHub removes scripts and page styles from README HTML. The name and brain animations are ordinary linked GIF images; the README itself uses supported HTML. See [GitHub's rendering pipeline](https://github.com/github/markup).
 - The contact table has one HTML row containing the brain and three linked images. Keeping all cards in the same cell avoids GitHub's alternating table-row background behind the Email card.
-- The GIF loops in 9.5 seconds. Its first frame shows the complete name. As with the other GIFs in the README, it cannot respond to `prefers-reduced-motion`.
+- The active name GIF loops in 8 seconds, forming the name from falling dots before they pour away. As with the other GIFs in the README, it cannot respond to `prefers-reduced-motion`.
 - The historical SVG nameplate uses a raster sprite sheet inside an SVG. SVG images cannot fetch external image resources in image context, but can use embedded data URLs: [MDN SVG as an image](https://developer.mozilla.org/en-US/docs/Web/SVG/Guides/SVG_as_an_image).
 - MRI and cortical-surface GIFs are illustrative source material, not outputs produced by the featured repositories. Their source credits above remain applicable.
 - Unused historical assets are retained for future iterations.

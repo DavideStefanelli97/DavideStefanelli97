@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in fine blue and cyan ASCII characters on a black retro terminal display, forming from falling particles before pouring away" width="100%" />
+  <img src="./assets/davide-stefanelli-halftone-green.gif" alt="DAVIDE STEFANELLI in green phosphor halftone dots on a retro terminal display, forming from falling particles before pouring away" width="100%" />
 </p>
 
 <div align="center">
-<img src="./assets/ascii-profile-panels/intro.gif" alt="Animated terminal profile: Computer Vision and AI Research Engineer, neuro-engineer, based in Cesena, Italy" align="left" width="100%" /><img src="./assets/ascii-profile-panels/brain.gif" alt="Rotating brain visualized as detailed ASCII art" align="left" width="57%" /><a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-profile-panels/linkedin.gif" alt="LinkedIn — open my professional profile" align="right" width="43%" /></a><a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-profile-panels/email.gif" alt="Email — write to me" align="right" width="43%" /></a><a href="https://github.com/DavideStefanelli97?tab=repositories"><img src="./assets/ascii-profile-panels/projects.gif" alt="Projects — explore my work" align="right" width="43%" /></a>
+<img src="./assets/ascii-profile-panels/intro.gif" alt="Animated terminal profile: Computer Vision and AI Research Engineer, neuro-engineer, based in Cesena, Italy" align="left" width="100%" /><img src="./assets/ascii-profile-panels/brain-phosphor-green-depth.gif" alt="Rotating brain visualized as green phosphor ASCII art with deep cortical shadows" align="left" width="57%" /><a href="https://www.linkedin.com/in/davide-stefanelli-engineer/"><img src="./assets/ascii-profile-panels/linkedin.gif" alt="LinkedIn — open my professional profile" align="right" width="43%" /></a><a href="mailto:davide.stefanelli.ing@gmail.com"><img src="./assets/ascii-profile-panels/email.gif" alt="Email — write to me" align="right" width="43%" /></a><a href="https://github.com/DavideStefanelli97?tab=repositories"><img src="./assets/ascii-profile-panels/projects.gif" alt="Projects — explore my work" align="right" width="43%" /></a>
 </div>
 <br clear="all" />
 

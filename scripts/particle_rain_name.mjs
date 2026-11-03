@@ -55,15 +55,29 @@ function rng(seed) {
 }
 
 const LINES = ["DAVIDE", "STEFANELLI"];
-const HIGH_RES_MASKS = JSON.parse(readFileSync(new URL("./particle_rain_mask.json", import.meta.url), "utf8"));
+const RETRO_CODE = process.argv.includes("--retro-code");
+const CYAN_PIXEL = process.argv.includes("--cyan-pixel");
+const HALFTONE_DOTS = process.argv.includes("--halftone-dots");
+const HALFTONE_GREEN = process.argv.includes("--halftone-green");
+const HALFTONE_DEPTH = process.argv.includes("--halftone-depth") || HALFTONE_GREEN;
+const HALFTONE = HALFTONE_DOTS || HALFTONE_DEPTH;
+const CLEAN_SCREEN = CYAN_PIXEL || HALFTONE;
+const maskFile = RETRO_CODE ? "./particle_rain_mask_retro_code.json"
+  : HALFTONE_DEPTH ? "./particle_rain_mask_halftone_depth.json"
+  : HALFTONE_DOTS ? "./particle_rain_mask_halftone_dots.json"
+  : CYAN_PIXEL ? "./particle_rain_mask_cyan_pixel.json" : "./particle_rain_mask.json";
+const HIGH_RES_MASKS = JSON.parse(readFileSync(new URL(maskFile, import.meta.url), "utf8"));
 function fineMask(line) {
   const { w, h, rows } = HIGH_RES_MASKS[line];
   return { w, h, at: (x, y) => (x >= 0 && y >= 0 && x < w && y < h ? Number(rows[y][x]) : 0) };
 }
-const PER = 8, G = 70;
+const PER = 8, G = CLEAN_SCREEN ? 150 : 70;
 // Sampled from brain-turntable-ascii-blue.gif, which uses the original cortical colors.
 const BRAIN_COLORS = ["#3966a5", "#54a9d9", "#69d7f9", "#86f9f9"];
-const HUES = gradient(BRAIN_COLORS, 10);
+const GREEN_COLORS = ["#168c43", "#2abb5b", "#5ef083", "#b3ffb5"];
+const HUES = RETRO_CODE
+  ? [...gradient(["#c4772d", "#ffd36b"], 5), ...gradient(["#3a9855", "#b5f879"], 5)]
+  : gradient(HALFTONE_GREEN ? GREEN_COLORS : BRAIN_COLORS, 10);
 const DEPTH = [0.55, 0.78, 1.0];
 const KEYS = "0123456789abcdefghijklmnopqrstuvwxyz";
 const scaleColor = (hex, shade) => "#" + [1, 3, 5]
@@ -75,12 +89,24 @@ const CHROME = KEYS[RAMP.length + 2], TITLE = KEYS[RAMP.length + 3];
 
 export const meta = {
   slug: "particle-rain-name",
-  name: "DAVIDE STEFANELLI - Particle Rain",
+  name: HALFTONE_GREEN ? "DAVIDE STEFANELLI - Green Phosphor Halftone Terminal"
+    : HALFTONE_DEPTH ? "DAVIDE STEFANELLI - Halftone Depth Terminal"
+    : HALFTONE_DOTS ? "DAVIDE STEFANELLI - Halftone Dots Terminal"
+    : CYAN_PIXEL ? "DAVIDE STEFANELLI - Cyan Pixel Terminal"
+    : RETRO_CODE ? "DAVIDE STEFANELLI - Retro Code Terminal" : "DAVIDE STEFANELLI - Particle Rain",
   category: "lettering",
-  note: "Dense ASCII grains rain into a two-line name, hold, then pour off the bottom.",
+  note: HALFTONE_GREEN ? "Green phosphor halftone dots grow and brighten toward each stroke center."
+    : HALFTONE_DEPTH ? "Halftone dots grow and brighten toward the center of each letter stroke."
+    : HALFTONE_DOTS ? "Circular halftone grains rain into a two-line name, hold, then pour off the bottom."
+    : "Dense ASCII grains rain into a two-line name, hold, then pour off the bottom.",
   tags: ["particles", "title", "hero", "intro", "letters"],
-  cols: 190, rows: 60, fps: 20,
-  palette: palette([...RAMP, "#1c3150", "#18253a", "#526574", "#a5bfcb"]),
+  cols: CYAN_PIXEL ? 380 : 190, rows: CLEAN_SCREEN ? 120 : 60, fps: 20,
+  palette: palette([...RAMP, ...(HALFTONE_GREEN
+    ? ["#103a1e", "#173b24", "#56825f", "#a2ffa0"]
+    : CLEAN_SCREEN
+    ? ["#163a48", "#1d3e42", "#77705a", "#f2c878"]
+    : RETRO_CODE ? ["#284625", "#253820", "#77705a", "#f2c878"]
+    : ["#1c3150", "#18253a", "#526574", "#a5bfcb"])]),
 };
 
 export default function create() {
@@ -89,67 +115,85 @@ export default function create() {
   const parts = [];
   LINES.forEach((line, lineIndex) => {
     const M = fineMask(line);
-    const x0 = Math.floor((cols - M.w) / 2), y0 = 5 + lineIndex * 26;
+    const x0 = Math.floor((cols - M.w) / 2);
+    const y0 = RETRO_CODE ? 4 + lineIndex * 28 : CLEAN_SCREEN ? 10 + lineIndex * 54 : 5 + lineIndex * 26;
     const R = rng(11 + lineIndex * 7);
     for (let y = 0; y < M.h; y++) for (let x = 0; x < M.w; x++) if (M.at(x, y)) {
       const density = M.at(x, y);
+      if (CYAN_PIXEL && density < 2) continue;
       const ty = y0 + y, from = -1 - R() * 14;
       const land = 0.8 + ((M.h - 1 - y) / M.h) * 2.5 + R() * 0.65 + (x / M.w) * 0.35 + lineIndex * 0.25;
       const fall = Math.sqrt((2 * (ty - from)) / G);
-      const position = Math.floor(((x0 + x - 10 + ty * 0.07) / (cols - 20)) * HUES.length);
+      const position = RETRO_CODE
+        ? lineIndex * 5 + Math.floor((x / M.w) * 5)
+        : Math.floor(((x0 + x - 10 + ty * 0.07) / (cols - 20)) * HUES.length);
       const relief = 0.48 + 0.22 * (1 - y / M.h) + 0.1 * (1 - x / M.w)
         + (M.at(x, y - 1) ? 0 : 0.19) - (M.at(x, y + 1) ? 0 : 0.08)
         + ((((x * 37 + y * 61 + lineIndex * 17) % 17) / 16) - 0.5) * 0.12;
-      const shade = relief > 0.78 ? 2 : relief > 0.56 ? 1 : 0;
-      const hue = Math.min(HUES.length - 1, Math.max(0, position + shade - 1));
-      const glyphs = density === 1 ? ".:+" : density === 2 ? "*#o" : "@@##%%&&WWMM88";
+      const shade = CLEAN_SCREEN ? 2 : relief > 0.78 ? 2 : relief > 0.56 ? 1 : 0;
+      const hue = CLEAN_SCREEN ? Math.min(HUES.length - 1, Math.max(0, position)) : RETRO_CODE
+        ? Math.min(lineIndex * 5 + 4, Math.max(lineIndex * 5, position + shade - 1))
+        : Math.min(HUES.length - 1, Math.max(0, position + shade - 1));
+      const glyphs = HALFTONE ? String(density) : CYAN_PIXEL ? "3"
+        : density === 1 ? ".:+" : density === 2 ? "*#o" : "@@##%%&&WWMM88";
       parts.push({ x: x0 + x, ty, from, t0: land - fall, land,
         out: 5.5 + R() * 0.6 + ((M.h - y) / M.h) * 0.35 + lineIndex * 0.1,
-        co: KEYS[hue * DEPTH.length + (density === 1 ? Math.min(shade, 1) : shade)],
+        co: KEYS[hue * DEPTH.length + (CLEAN_SCREEN ? 2 : density === 1 ? Math.min(shade, 1) : shade)],
         bright: KEYS[hue * DEPTH.length + 2],
         glyph: glyphs[Math.floor(R() * glyphs.length)] });
     }
   });
   const flood = rng(5), drift = [];
-  for (let i = 0; i < 120; i++) drift.push([flood() * cols, flood() * 65, 7 + flood() * 12]);
+  for (let i = 0; i < (CLEAN_SCREEN ? 200 : 120); i++)
+    drift.push([flood() * cols, flood() * (CLEAN_SCREEN ? 130 : 65),
+      (CLEAN_SCREEN ? 14 : 7) + flood() * (CLEAN_SCREEN ? 24 : 12)]);
   return (t) => {
     g.clear();
     const lt = ((t % PER) + PER) % PER;
     // faint background drizzle of stray grains
     for (const [x, o, v] of drift) {
       const y = ((o + t * v) % (rows + 6)) - 3;
-      g.set(x, y, ".", DRIZZLE);
+      g.set(x, y, HALFTONE ? "1" : ".", DRIZZLE);
     }
-    // The same ASCII terminal chrome used by the profile panels.
-    g.hline(1, cols - 2, 0, "-", CHROME);
-    g.hline(1, cols - 2, 2, "-", CHROME);
-    g.hline(1, cols - 2, rows - 1, "-", CHROME);
-    for (let y = 0; y < rows; y++) {
-      g.set(0, y, "|", CHROME);
-      g.set(cols - 1, y, "|", CHROME);
+    // Clean-screen variants get the terminal chrome in the renderer.
+    if (!CLEAN_SCREEN) {
+      g.hline(1, cols - 2, 0, "-", CHROME);
+      g.hline(1, cols - 2, 2, "-", CHROME);
+      g.hline(1, cols - 2, rows - 1, "-", CHROME);
+      for (let y = 0; y < rows; y++) {
+        g.set(0, y, "|", CHROME);
+        g.set(cols - 1, y, "|", CHROME);
+      }
+      for (const y of [0, 2, rows - 1]) {
+        g.set(0, y, "+", CHROME);
+        g.set(cols - 1, y, "+", CHROME);
+      }
+      if (RETRO_CODE) {
+        g.text(3, 1, "C:\\>", TITLE);
+        if (Math.floor(lt * 2) % 2 === 0) g.set(6, 1, "_", TITLE);
+        g.text(8, 1, "RUN IDENTITY.EXE", TITLE);
+      } else {
+        g.set(3, 1, ">", TITLE);
+        if (Math.floor(lt * 2) % 2 === 0) g.set(4, 1, "_", TITLE);
+        g.text(6, 1, "terminal - identity.txt", TITLE);
+      }
+      g.text(cols - 16, 1, RETRO_CODE ? "MEM 640K [X]" : "[_] [ ] [X]", CHROME);
+      g.hline(1, cols - 2, rows - 2, "_", FLOOR);
     }
-    for (const y of [0, 2, rows - 1]) {
-      g.set(0, y, "+", CHROME);
-      g.set(cols - 1, y, "+", CHROME);
-    }
-    g.set(3, 1, ">", TITLE);
-    if (Math.floor(lt * 2) % 2 === 0) g.set(4, 1, "_", TITLE);
-    g.text(6, 1, "terminal - identity.txt", TITLE);
-    g.text(cols - 16, 1, "[_] [ ] [X]", CHROME);
-    g.hline(1, cols - 2, rows - 2, "_", FLOOR);
     for (const p of parts) {
       if (lt < p.t0) continue;
       if (lt < p.land) {
         const dt = lt - p.t0, y = p.from + 0.5 * G * dt * dt;
-        g.set(p.x, y, ":", p.bright);
-        if (dt > 0.12) g.set(p.x, y - 1, "|", p.co);
+        g.set(p.x, y, HALFTONE ? "2" : ":", p.bright);
+        if (dt > 0.12) g.set(p.x, y - 1, HALFTONE ? "1" : "|", p.co);
       } else if (lt < p.out) {
         const age = lt - p.land;
-        g.set(p.x, p.ty, age < 0.12 ? "*" : p.glyph, age < 0.12 ? p.bright : p.co);
+        g.set(p.x, p.ty, CLEAN_SCREEN ? p.glyph : age < 0.12 ? "*" : p.glyph,
+          age < 0.12 ? p.bright : p.co);
       } else {
         const dt = lt - p.out, y = p.ty + 0.5 * G * dt * dt;
-        if (y < rows - 2) { g.set(p.x, y, p.glyph, p.co); if (dt > 0.1) g.set(p.x, y - 1, ":", p.co); }
-        else if (y < rows + 3) g.set(p.x + ((p.ty * 7 + p.x) % 3) - 1, rows - 2, "#", p.co);
+        if (y < rows - 2) { g.set(p.x, y, p.glyph, p.co); if (dt > 0.1) g.set(p.x, y - 1, HALFTONE ? "1" : ":", p.co); }
+        else if (y < rows + 3) g.set(p.x + ((p.ty * 7 + p.x) % 3) - 1, rows - 2, HALFTONE ? "2" : "#", p.co);
       }
     }
     return g.frame();
