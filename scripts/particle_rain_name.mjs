@@ -1,6 +1,7 @@
 /* Adapted from the supplied particle-rain-word piece for the profile name. */
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
 
 class Grid {
   constructor(cols, rows) {
@@ -53,47 +54,12 @@ function rng(seed) {
   };
 }
 
-/* 5x7 block font, drawn fresh for this piece. */
-const FONT7 = {
-  A: ".###.|#...#|#...#|#####|#...#|#...#|#...#", B: "####.|#...#|#...#|####.|#...#|#...#|####.",
-  C: ".###.|#...#|#....|#....|#....|#...#|.###.", D: "####.|#...#|#...#|#...#|#...#|#...#|####.",
-  E: "#####|#....|#....|####.|#....|#....|#####", F: "#####|#....|#....|####.|#....|#....|#....",
-  G: ".###.|#...#|#....|#.###|#...#|#...#|.####", H: "#...#|#...#|#...#|#####|#...#|#...#|#...#",
-  I: "#####|..#..|..#..|..#..|..#..|..#..|#####", J: "..###|...#.|...#.|...#.|#..#.|#..#.|.##..",
-  K: "#...#|#..#.|#.#..|##...|#.#..|#..#.|#...#", L: "#....|#....|#....|#....|#....|#....|#####",
-  M: "#...#|##.##|#.#.#|#.#.#|#...#|#...#|#...#", N: "#...#|##..#|#.#.#|#.#.#|#..##|#...#|#...#",
-  O: ".###.|#...#|#...#|#...#|#...#|#...#|.###.", P: "####.|#...#|#...#|####.|#....|#....|#....",
-  Q: ".###.|#...#|#...#|#...#|#.#.#|#..#.|.##.#", R: "####.|#...#|#...#|####.|#.#..|#..#.|#...#",
-  S: ".###.|#...#|#....|.###.|....#|#...#|.###.", T: "#####|..#..|..#..|..#..|..#..|..#..|..#..",
-  U: "#...#|#...#|#...#|#...#|#...#|#...#|.###.", V: "#...#|#...#|#...#|#...#|#...#|.#.#.|..#..",
-  W: "#...#|#...#|#...#|#.#.#|#.#.#|##.##|#...#", X: "#...#|#...#|.#.#.|..#..|.#.#.|#...#|#...#",
-  Y: "#...#|#...#|.#.#.|..#..|..#..|..#..|..#..", Z: "#####|....#|...#.|..#..|.#...|#....|#####",
-  0: ".###.|#...#|#..##|#.#.#|##..#|#...#|.###.", 1: "..#..|.##..|..#..|..#..|..#..|..#..|.###.",
-  2: ".###.|#...#|....#|...#.|..#..|.#...|#####", 3: "####.|....#|....#|.###.|....#|....#|####.",
-  4: "...#.|..##.|.#.#.|#..#.|#####|...#.|...#.", 5: "#####|#....|####.|....#|....#|#...#|.###.",
-  6: ".###.|#....|#....|####.|#...#|#...#|.###.", 7: "#####|....#|...#.|..#..|.#...|.#...|.#...",
-  8: ".###.|#...#|#...#|.###.|#...#|#...#|.###.", 9: ".###.|#...#|#...#|.####|....#|....#|.###.",
-  ":": ".....|..#..|..#..|.....|..#..|..#..|.....", "!": "..#..|..#..|..#..|..#..|..#..|.....|..#..",
-  ".": ".....|.....|.....|.....|.....|.....|..#..", "-": ".....|.....|.....|.###.|.....|.....|.....",
-  "?": ".###.|#...#|....#|...#.|..#..|.....|..#..", "'": "..#..|..#..|.....|.....|.....|.....|.....",
-  " ": ".....|.....|.....|.....|.....|.....|.....",
-};
-const GL7 = {};
-for (const k in FONT7) GL7[k] = FONT7[k].split("|");
-const glyph7 = (c) => GL7[c] || GL7[" "];
-/* Rasterise a word: each font pixel becomes sx by sy cells, letters gap cells apart. */
-function textMask(word, sx = 1, sy = 1, gap = 1) {
-  const cw = 5 * sx + gap, w = word.length * cw - gap, h = 7 * sy;
-  const m = new Uint8Array(w * h), li = new Int16Array(w * h).fill(-1);
-  [...word].forEach((c, k) => {
-    const gl = glyph7(c);
-    for (let j = 0; j < 7; j++) for (let i = 0; i < 5; i++) if (gl[j][i] === "#")
-      for (let a = 0; a < sy; a++) for (let b = 0; b < sx; b++) { const p = k * cw + i * sx + b + (j * sy + a) * w; m[p] = 1; li[p] = k; }
-  });
-  return { w, h, m, li, at: (x, y) => (x >= 0 && y >= 0 && x < w && y < h ? m[x + y * w] : 0) };
-}
-
 const LINES = ["DAVIDE", "STEFANELLI"];
+const HIGH_RES_MASKS = JSON.parse(readFileSync(new URL("./particle_rain_mask.json", import.meta.url), "utf8"));
+function fineMask(line) {
+  const { w, h, rows } = HIGH_RES_MASKS[line];
+  return { w, h, at: (x, y) => (x >= 0 && y >= 0 && x < w && y < h ? Number(rows[y][x]) : 0) };
+}
 const PER = 8, G = 70;
 // Sampled from brain-turntable-ascii-blue.gif, which uses the original cortical colors.
 const BRAIN_COLORS = ["#3966a5", "#54a9d9", "#69d7f9", "#86f9f9"];
@@ -113,7 +79,7 @@ export const meta = {
   category: "lettering",
   note: "Dense ASCII grains rain into a two-line name, hold, then pour off the bottom.",
   tags: ["particles", "title", "hero", "intro", "letters"],
-  cols: 122, rows: 39, fps: 20,
+  cols: 190, rows: 60, fps: 20,
   palette: palette([...RAMP, "#1c3150", "#18253a", "#526574", "#a5bfcb"]),
 };
 
@@ -122,10 +88,11 @@ export default function create() {
   const g = new Grid(cols, rows);
   const parts = [];
   LINES.forEach((line, lineIndex) => {
-    const M = textMask(line, 2, 2, 1);
-    const x0 = Math.floor((cols - M.w) / 2), y0 = 4 + lineIndex * 17;
+    const M = fineMask(line);
+    const x0 = Math.floor((cols - M.w) / 2), y0 = 5 + lineIndex * 26;
     const R = rng(11 + lineIndex * 7);
     for (let y = 0; y < M.h; y++) for (let x = 0; x < M.w; x++) if (M.at(x, y)) {
+      const density = M.at(x, y);
       const ty = y0 + y, from = -1 - R() * 14;
       const land = 0.8 + ((M.h - 1 - y) / M.h) * 2.5 + R() * 0.65 + (x / M.w) * 0.35 + lineIndex * 0.25;
       const fall = Math.sqrt((2 * (ty - from)) / G);
@@ -135,14 +102,16 @@ export default function create() {
         + ((((x * 37 + y * 61 + lineIndex * 17) % 17) / 16) - 0.5) * 0.12;
       const shade = relief > 0.78 ? 2 : relief > 0.56 ? 1 : 0;
       const hue = Math.min(HUES.length - 1, Math.max(0, position + shade - 1));
+      const glyphs = density === 1 ? ".:+" : density === 2 ? "*#o" : "@@##%%&&WWMM88";
       parts.push({ x: x0 + x, ty, from, t0: land - fall, land,
         out: 5.5 + R() * 0.6 + ((M.h - y) / M.h) * 0.35 + lineIndex * 0.1,
-        co: KEYS[hue * DEPTH.length + shade], bright: KEYS[hue * DEPTH.length + 2],
-        glyph: "@@##%%&&WWMM88"[Math.floor(R() * 14)] });
+        co: KEYS[hue * DEPTH.length + (density === 1 ? Math.min(shade, 1) : shade)],
+        bright: KEYS[hue * DEPTH.length + 2],
+        glyph: glyphs[Math.floor(R() * glyphs.length)] });
     }
   });
   const flood = rng(5), drift = [];
-  for (let i = 0; i < 80; i++) drift.push([flood() * cols, flood() * 40, 6 + flood() * 10]);
+  for (let i = 0; i < 120; i++) drift.push([flood() * cols, flood() * 65, 7 + flood() * 12]);
   return (t) => {
     g.clear();
     const lt = ((t % PER) + PER) % PER;

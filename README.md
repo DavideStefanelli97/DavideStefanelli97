@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in blue and cyan Dense ASCII on a black terminal screen, forming from falling particles before pouring away" width="100%" />
+  <img src="./assets/davide-stefanelli-dense-ascii.gif" alt="DAVIDE STEFANELLI in fine blue and cyan ASCII characters on a black retro terminal display, forming from falling particles before pouring away" width="100%" />
 </p>
 
 <div align="center">

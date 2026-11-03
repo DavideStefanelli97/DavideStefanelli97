@@ -3,6 +3,7 @@
 import argparse
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -10,11 +11,15 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "scripts" / "particle_rain_name.mjs"
+MASK_GENERATOR = ROOT / "scripts" / "generate_particle_rain_mask.py"
 DEFAULT_OUTPUT = ROOT / "assets" / "davide-stefanelli-dense-ascii.gif"
 FONT = Path(r"C:\Windows\Fonts\consola.ttf")
-CELL_WIDTH = 11
-CELL_HEIGHT = 18
+CELL_WIDTH = 12
+CELL_HEIGHT = 20
 BACKGROUND = "#000000"
+BEZEL_X = 60
+BEZEL_TOP = 65
+BEZEL_BOTTOM = 95
 
 
 def render(frame: dict, font: ImageFont.FreeTypeFont) -> Image.Image:
@@ -48,7 +53,37 @@ def render(frame: dict, font: ImageFont.FreeTypeFont) -> Image.Image:
                     fill=frame["palette"].get(key, "#e6edf3"),
                     anchor="lm",
                 )
-    return image
+    # Fine scanlines sit over the glow and crisp characters.
+    overlay = Image.new("RGBA", size)
+    scanlines = ImageDraw.Draw(overlay)
+    for y in range(4, size[1], 5):
+        scanlines.line((0, y, size[0], y), fill=(0, 0, 0, 28))
+    image = Image.alpha_composite(image.convert("RGBA"), overlay).convert("RGB")
+
+    outer_size = (size[0] + 2 * BEZEL_X, size[1] + BEZEL_TOP + BEZEL_BOTTOM)
+    device = Image.new("RGB", outer_size, "#080b0e")
+    casing = ImageDraw.Draw(device)
+    w, h = outer_size
+    casing.rounded_rectangle((5, 5, w - 6, h - 6), radius=42,
+                            fill="#171e24", outline="#5b6a72", width=4)
+    casing.rounded_rectangle((18, 18, w - 19, h - 19), radius=34,
+                            outline="#303d46", width=3)
+    casing.rounded_rectangle((BEZEL_X - 13, BEZEL_TOP - 13,
+                             BEZEL_X + size[0] + 12, BEZEL_TOP + size[1] + 12),
+                            radius=15, fill="#020506", outline="#405660", width=3)
+    device.paste(image, (BEZEL_X, BEZEL_TOP))
+    casing = ImageDraw.Draw(device)
+    for x in (32, w - 33):
+        for y in (32, h - 33):
+            casing.ellipse((x - 5, y - 5, x + 5, y + 5),
+                           fill="#0b1115", outline="#59656b", width=2)
+    label_font = ImageFont.truetype(str(FONT), 21)
+    casing.text((BEZEL_X + 8, h - 56), "DS-97  /  VISUAL TERMINAL",
+                font=label_font, fill="#81929c")
+    casing.text((w - 220, h - 56), "POWER", font=label_font, fill="#81929c")
+    casing.ellipse((w - 80, h - 64, w - 54, h - 38), fill="#103d4a")
+    casing.ellipse((w - 75, h - 59, w - 59, h - 43), fill="#6bd9ef")
+    return device
 
 
 def main() -> None:
@@ -56,6 +91,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
 
+    subprocess.run([sys.executable, str(MASK_GENERATOR)], check=True, capture_output=True)
     process = subprocess.run(
         ["node", str(SOURCE)],
         capture_output=True,
@@ -67,16 +103,17 @@ def main() -> None:
     if not source_frames:
         raise ValueError("The animation produced no frames")
     font = ImageFont.truetype(str(FONT), CELL_HEIGHT)
-    frames = [render(frame, font) for frame in source_frames]
-
-    # A palette sampled from the whole sequence preserves the name's gradient.
-    samples = [frames[round(i * (len(frames) - 1) / 7)] for i in range(8)]
-    sw, sh = frames[0].size
+    # Sample the full sequence, then render one RGB frame at a time to limit memory.
+    samples = [render(source_frames[round(i * (len(source_frames) - 1) / 7)], font)
+               for i in range(8)]
+    sw, sh = samples[0].size
     reference = Image.new("RGB", (sw, sh * len(samples)), BACKGROUND)
     for i, sample in enumerate(samples):
         reference.paste(sample, (0, i * sh))
-    palette = reference.quantize(colors=128, method=Image.Quantize.FASTOCTREE)
-    indexed = [frame.quantize(palette=palette, dither=Image.Dither.NONE) for frame in frames]
+    palette = reference.quantize(colors=256, method=Image.Quantize.FASTOCTREE)
+    del reference, samples
+    indexed = [render(frame, font).quantize(palette=palette, dither=Image.Dither.NONE)
+               for frame in source_frames]
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     indexed[0].save(
@@ -86,7 +123,7 @@ def main() -> None:
         duration=50,
         loop=0,
         optimize=True,
-        disposal=2,
+        disposal=1,
     )
     print(f"{args.output}: {len(indexed)} frames, {sw}x{sh}")
 
